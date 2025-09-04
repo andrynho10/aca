@@ -1,5 +1,6 @@
 package com.tulsa.aca.viewmodel
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.tulsa.aca.data.models.PlantillaChecklist
 import com.tulsa.aca.data.models.RespuestaReporte
 import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteRepository
+import com.tulsa.aca.data.repository.RespuestaConFotos
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,34 +94,38 @@ class ChecklistViewModel : ViewModel() {
     }
 
 
-
     fun guardarChecklist(
         assetId: Int,
         userId: String,
         templateId: Int,
+        context: Context,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             _isSaving.value = true
             try {
-
-                val respuestasReporte = _respuestas.value.values.mapNotNull { respuesta ->
+                // Preparar respuestas con fotos
+                val respuestasConFotos = _respuestas.value.values.mapNotNull { respuesta ->
                     respuesta.respuesta?.let { resp ->
-                        RespuestaReporte(
-                            reporteId = "", // Se asignará en el repositorio
-                            preguntaId = respuesta.preguntaId,
-                            respuesta = resp,
-                            comentario = respuesta.comentario.ifBlank { null }
+                        RespuestaConFotos(
+                            respuesta = RespuestaReporte(
+                                reporteId = "", // Se asignará en el repositorio
+                                preguntaId = respuesta.preguntaId,
+                                respuesta = resp,
+                                comentario = respuesta.comentario.ifBlank { null }
+                            ),
+                            fotos = respuesta.fotos
                         )
                     }
                 }
 
-                val success = reporteRepository.crearReporte(
+                val success = reporteRepository.crearReporteConFotos(
+                    context = context,
                     activoId = assetId,
                     usuarioId = userId,
                     plantillaId = templateId,
-                    respuestas = respuestasReporte
+                    respuestasConFotos = respuestasConFotos
                 )
 
                 if (success) {

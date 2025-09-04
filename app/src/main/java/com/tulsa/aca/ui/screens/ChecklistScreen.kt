@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -30,6 +31,7 @@ fun ChecklistScreen(
     modifier: Modifier = Modifier,
     viewModel: ChecklistViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val plantillaCompleta by viewModel.plantillaCompleta.collectAsState()
     val respuestas by viewModel.respuestas.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -127,6 +129,7 @@ fun ChecklistScreen(
                                     assetId = assetId,
                                     userId = "e5d351ff-f07a-49c3-87d8-185c58706c75",
                                     templateId = templateId,
+                                    context = context,
                                     onSuccess = onChecklistCompleted,
                                     onError = { error ->
                                         errorMessage = error
