@@ -1,5 +1,6 @@
 package com.tulsa.aca.ui.screens
 
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.CategoriaPlantilla
 import com.tulsa.aca.data.models.PreguntaPlantilla
+import com.tulsa.aca.ui.components.PhotoCaptureComponent
 import com.tulsa.aca.viewmodel.ChecklistViewModel
 import com.tulsa.aca.viewmodel.RespuestaChecklistItem
 
@@ -89,6 +91,9 @@ fun ChecklistScreen(
                                 },
                                 onComentarioChanged = { preguntaId, comentario ->
                                     viewModel.actualizarComentario(preguntaId, comentario)
+                                },
+                                onFotosChanged = { preguntaId, fotos ->
+                                    viewModel.actualizarFotos(preguntaId, fotos)
                                 }
                             )
                         }
@@ -164,6 +169,7 @@ private fun CategorySection(
     respuestas: Map<Int, RespuestaChecklistItem>,
     onRespuestaChanged: (Int, Boolean) -> Unit,
     onComentarioChanged: (Int, String) -> Unit,
+    onFotosChanged: (Int, List<Uri>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
@@ -189,6 +195,9 @@ private fun CategorySection(
                     },
                     onComentarioChanged = { comentario ->
                         onComentarioChanged(pregunta.id, comentario)
+                    },
+                    onFotosChanged = { fotos ->
+                        onFotosChanged(pregunta.id, fotos) // Nueva función
                     }
                 )
 
@@ -204,6 +213,7 @@ private fun QuestionItem(
     respuesta: RespuestaChecklistItem?,
     onRespuestaChanged: (Boolean) -> Unit,
     onComentarioChanged: (String) -> Unit,
+    onFotosChanged: (List<Uri>) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -256,6 +266,12 @@ private fun QuestionItem(
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 2,
                 shape = RoundedCornerShape(8.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            PhotoCaptureComponent(
+                photos = respuesta.fotos,
+                onPhotosChanged = onFotosChanged
             )
         }
     }

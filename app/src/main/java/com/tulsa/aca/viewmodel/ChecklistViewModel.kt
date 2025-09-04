@@ -1,5 +1,6 @@
 package com.tulsa.aca.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.PlantillaChecklist
@@ -14,7 +15,8 @@ import kotlinx.coroutines.launch
 data class RespuestaChecklistItem(
     val preguntaId: Int,
     val respuesta: Boolean? = null,
-    val comentario: String = ""
+    val comentario: String = "",
+    val fotos: List<Uri> = emptyList() // Nueva propiedad para fotos
 )
 
 class ChecklistViewModel : ViewModel() {
@@ -73,6 +75,13 @@ class ChecklistViewModel : ViewModel() {
         val respuestasActuales = _respuestas.value.toMutableMap()
         val item = respuestasActuales[preguntaId] ?: RespuestaChecklistItem(preguntaId)
         respuestasActuales[preguntaId] = item.copy(comentario = comentario)
+        _respuestas.value = respuestasActuales
+    }
+
+    fun actualizarFotos(preguntaId: Int, fotos: List<Uri>) {
+        val respuestasActuales = _respuestas.value.toMutableMap()
+        val item = respuestasActuales[preguntaId] ?: RespuestaChecklistItem(preguntaId)
+        respuestasActuales[preguntaId] = item.copy(fotos = fotos)
         _respuestas.value = respuestasActuales
     }
 
