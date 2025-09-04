@@ -17,6 +17,7 @@ class ReporteRepository {
         respuestas: List<RespuestaReporte>
     ): Boolean {
         return try {
+
             val reporteId = UUID.randomUUID().toString()
 
             // Crear el reporte principal
@@ -38,6 +39,7 @@ class ReporteRepository {
 
             true
         } catch (e: Exception) {
+            android.util.Log.e("ChecklistApp", "ERROR EN REPOSITORIO: ${e.message}", e)
             false
         }
     }

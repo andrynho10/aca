@@ -1,6 +1,6 @@
 package com.tulsa.aca.data.supabase
 
-import com.tulsa.aca.BuildConfig
+/* import com.tulsa.aca.BuildConfig */
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth

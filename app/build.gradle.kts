@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("plugin.serialization") version "2.0.21"  // Cambiar a la versión correcta
+    kotlin("plugin.serialization") version "2.0.21"
 }
 
 android {
@@ -83,6 +83,7 @@ dependencies {
 
     // QR Code
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
     // Permisos de cámara
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
