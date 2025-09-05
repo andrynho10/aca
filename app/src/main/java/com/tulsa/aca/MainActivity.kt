@@ -103,8 +103,6 @@ fun ACAApp(
                 }
             )
         }
-
-        // Pantalla de checklist (placeholder por ahora)
         // Pantalla de checklist
         composable(
             route = Screen.Checklist.route,

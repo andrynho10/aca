@@ -98,4 +98,7 @@ dependencies {
 
     // Manejo de imágenes
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Compresión de imágenes
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 }
