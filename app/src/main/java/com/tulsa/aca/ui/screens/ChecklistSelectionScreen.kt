@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import com.tulsa.aca.viewmodel.PlantillaViewModel
 fun ChecklistSelectionScreen(
     assetId: Int,
     onNavigateBack: () -> Unit,
+    onViewHistory: (Int) -> Unit,
     onChecklistSelected: (Int, Int) -> Unit, // assetId, templateId
     modifier: Modifier = Modifier,
     activoViewModel: ActivoViewModel = viewModel(),
@@ -66,10 +68,11 @@ fun ChecklistSelectionScreen(
             }
         )
 
-        // Información del activo
+        // Información del activo CON BOTÓN DE HISTORIAL
         activo?.let {
-            AssetInfoCard(
+            AssetInfoCardWithHistory(
                 activo = it,
+                onViewHistory = { onViewHistory(assetId) },
                 modifier = Modifier.padding(16.dp)
             )
         }
@@ -124,6 +127,54 @@ fun ChecklistSelectionScreen(
     }
 }
 
+// NUEVA FUNCIÓN - Reemplaza la función AssetInfoCard original
+@Composable
+private fun AssetInfoCardWithHistory(
+    activo: Activo,
+    onViewHistory: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "Activo Seleccionado",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = activo.nombre,
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                text = "Tipo: ${activo.tipo} • Modelo: ${activo.modelo}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // BOTÓN PARA VER HISTORIAL - ESTA ES LA PARTE NUEVA
+            OutlinedButton(
+                onClick = onViewHistory,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "Ver historial",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Ver Historial de Inspecciones")
+            }
+        }
+    }
+}
+
+// Mantener por si acaso
 @Composable
 private fun AssetInfoCard(
     activo: Activo,

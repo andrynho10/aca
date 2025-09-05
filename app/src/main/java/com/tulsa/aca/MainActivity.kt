@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.tulsa.aca.ui.navigation.Screen
+import com.tulsa.aca.ui.screens.AssetHistoryScreen
 import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
@@ -96,10 +97,30 @@ fun ACAApp(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
+                onViewHistory = { assetId ->
+                    navController.navigate(Screen.AssetHistory.createRoute(assetId))
+                },
                 onChecklistSelected = { assetId, templateId ->
                     navController.navigate(
                         Screen.Checklist.createRoute(assetId, templateId)
                     )
+                }
+            )
+        }
+        // Pantalla de historial del activo
+        composable(
+            route = Screen.AssetHistory.route,
+            arguments = listOf(navArgument("assetId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val assetId = backStackEntry.arguments?.getInt("assetId") ?: 0
+            AssetHistoryScreen(
+                assetId = assetId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNewInspection = {
+                    // Navegar de vuelta a la selección de checklist
+                    navController.popBackStack()
                 }
             )
         }
