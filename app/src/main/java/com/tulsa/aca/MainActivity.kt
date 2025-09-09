@@ -17,6 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.navigation.Screen
 import com.tulsa.aca.ui.screens.AssetHistoryScreen
 import com.tulsa.aca.ui.screens.AssetListScreen
@@ -119,9 +120,14 @@ fun ACAApp(
                     navController.popBackStack()
                 },
                 onNewInspection = {
-                    // Navegar de vuelta a la selección de checklist
                     navController.popBackStack()
-                }
+                },
+                onViewReportDetails = if (UserSession.isSupervisor()) {
+                    { reporteId ->
+                        // TODO: Implementar pantalla de detalles del reporte
+                    }
+                } else null,
+                userRole = UserSession.getCurrentUser().rol // Usar rol real
             )
         }
         // Pantalla de checklist

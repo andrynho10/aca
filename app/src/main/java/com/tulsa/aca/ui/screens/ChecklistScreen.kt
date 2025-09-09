@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.CategoriaPlantilla
 import com.tulsa.aca.data.models.PreguntaPlantilla
+import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.components.PhotoCaptureComponent
 import com.tulsa.aca.viewmodel.ChecklistViewModel
 import com.tulsa.aca.viewmodel.RespuestaChecklistItem
@@ -127,7 +128,7 @@ fun ChecklistScreen(
                             onClick = {
                                 viewModel.guardarChecklist(
                                     assetId = assetId,
-                                    userId = "e5d351ff-f07a-49c3-87d8-185c58706c75",
+                                    userId = UserSession.getCurrentUser().id,
                                     templateId = templateId,
                                     context = context,
                                     onSuccess = onChecklistCompleted,

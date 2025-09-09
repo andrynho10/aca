@@ -2,32 +2,31 @@ package com.tulsa.aca.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.tulsa.aca.data.models.Activo
-import com.tulsa.aca.data.models.ReporteInspeccion
+import com.tulsa.aca.data.models.HistorialUiState
+import com.tulsa.aca.data.models.ReporteConUsuario
 import com.tulsa.aca.data.repository.ActivoRepository
 import com.tulsa.aca.data.repository.ReporteRepository
+import com.tulsa.aca.data.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class HistorialUiState(
-    val activo: Activo? = null,
-    val reportes: List<ReporteInspeccion> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null
-)
-
 class HistorialViewModel : ViewModel() {
     private val activoRepository = ActivoRepository()
     private val reporteRepository = ReporteRepository()
+    private val usuarioRepository = UsuarioRepository()
 
     private val _uiState = MutableStateFlow(HistorialUiState())
     val uiState: StateFlow<HistorialUiState> = _uiState.asStateFlow()
 
-    fun cargarHistorialActivo(activoId: Int) {
+    fun cargarHistorialActivo(activoId: Int, tipoUsuario: String = "OPERARIO") {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                error = null,
+                tipoUsuario = tipoUsuario
+            )
 
             try {
                 // Cargar información del activo
@@ -37,9 +36,15 @@ class HistorialViewModel : ViewModel() {
                     // Cargar historial de reportes
                     val reportes = reporteRepository.obtenerHistorialPorActivo(activoId)
 
+                    // Cargar información de usuarios para cada reporte
+                    val reportesConUsuario = reportes.map { reporte ->
+                        val usuario = usuarioRepository.obtenerUsuarioPorId(reporte.usuarioId)
+                        ReporteConUsuario(reporte, usuario)
+                    }
+
                     _uiState.value = _uiState.value.copy(
                         activo = activo,
-                        reportes = reportes,
+                        reportes = reportesConUsuario,
                         isLoading = false
                     )
                 } else {

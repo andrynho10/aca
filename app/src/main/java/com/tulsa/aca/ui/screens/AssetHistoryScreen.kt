@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,11 +17,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.Activo
-import com.tulsa.aca.data.models.ReporteInspeccion
+import com.tulsa.aca.data.models.ReporteConUsuario
 import com.tulsa.aca.viewmodel.HistorialViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,20 +31,22 @@ fun AssetHistoryScreen(
     onNavigateBack: () -> Unit,
     onNewInspection: () -> Unit,
     modifier: Modifier = Modifier,
+    onViewReportDetails: ((String) -> Unit)? = null, // Para supervisores
+    userRole: String = "OPERARIO",
     historialViewModel: HistorialViewModel = viewModel()
-) {
+    ) {
     val uiState by historialViewModel.uiState.collectAsState()
 
     // Cargar datos al inicializar la pantalla
     LaunchedEffect(assetId) {
-        historialViewModel.cargarHistorialActivo(assetId)
+        historialViewModel.cargarHistorialActivo(assetId, userRole)
     }
 
     // Mostrar error si existe - extraemos la variable aquí
     val currentError = uiState.error
     LaunchedEffect(currentError) {
         if (currentError != null) {
-            // Aquí se podría mostrar un SnackBar
+            // Aquí podrías mostrar un SnackBar si lo deseas
             historialViewModel.limpiarError()
         }
     }
@@ -71,14 +75,16 @@ fun AssetHistoryScreen(
             currentError != null -> {
                 ErrorContent(
                     error = currentError,
-                    onRetry = { historialViewModel.cargarHistorialActivo(assetId) }
+                    onRetry = { historialViewModel.cargarHistorialActivo(assetId, userRole) }
                 )
             }
             else -> {
                 HistoryContent(
                     activo = uiState.activo,
                     reportes = uiState.reportes,
-                    onNewInspection = onNewInspection
+                    onNewInspection = onNewInspection,
+                    onViewReportDetails = onViewReportDetails,
+                    userRole = uiState.tipoUsuario
                 )
             }
         }
@@ -137,8 +143,10 @@ private fun ErrorContent(
 @Composable
 private fun HistoryContent(
     activo: Activo?,
-    reportes: List<ReporteInspeccion>,
-    onNewInspection: () -> Unit
+    reportes: List<ReporteConUsuario>,
+    onNewInspection: () -> Unit,
+    onViewReportDetails: ((String) -> Unit)?,
+    userRole: String
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -209,8 +217,13 @@ private fun HistoryContent(
                 EmptyHistoryCard()
             }
         } else {
-            items(reportes) { reporte ->
-                ReporteCard(reporte = reporte)
+            items(reportes) { reporteConUsuario ->
+                ReporteCard(
+                    reporteConUsuario = reporteConUsuario,
+                    onViewDetails = if (userRole == "SUPERVISOR" && onViewReportDetails != null) {
+                        { reporteConUsuario.reporte.id?.let { onViewReportDetails(it) } }
+                    } else null
+                )
             }
         }
     }
@@ -291,10 +304,16 @@ private fun EmptyHistoryCard() {
 
 @Composable
 private fun ReporteCard(
-    reporte: ReporteInspeccion,
-    modifier: Modifier = Modifier
+    reporteConUsuario: ReporteConUsuario,
+    modifier: Modifier = Modifier,
+    onViewDetails: (() -> Unit)? = null
 ) {
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    // Formateo de fecha en hora local de Chile
+    val dateFormat = remember {
+        SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).apply {
+            timeZone = TimeZone.getTimeZone("America/Santiago") // Hora de Chile
+        }
+    }
 
     ElevatedCard(
         modifier = modifier.fillMaxWidth()
@@ -314,7 +333,7 @@ private fun ReporteCard(
                         text = "Inspección",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    reporte.id?.let { reporteId ->
+                    reporteConUsuario.reporte.id?.let { reporteId ->
                         Text(
                             text = "ID: ${reporteId.take(8)}...",
                             style = MaterialTheme.typography.bodySmall,
@@ -323,25 +342,44 @@ private fun ReporteCard(
                     }
                 }
 
-                // Estado visual (por ahora simple, podrías expandir para mostrar problemas encontrados)
-                AssistChip(
-                    onClick = { },
-                    label = { Text("Completada") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Assignment,
-                            contentDescription = "Completada",
-                            modifier = Modifier.size(16.dp)
-                        )
+                Row {
+                    // Estado visual
+                    AssistChip(
+                        onClick = { },
+                        label = { Text("Completada") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Assignment,
+                                contentDescription = "Completada",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
+
+                    // Botón "Ver detalles" solo para supervisores
+                    if (onViewDetails != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        FilledTonalButton(
+                            onClick = onViewDetails,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Visibility,
+                                contentDescription = "Ver detalles",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Detalles", style = MaterialTheme.typography.labelSmall)
+                        }
                     }
-                )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Fecha
-            reporte.timestampCompletado?.let { timestamp ->
-                val dateText = formatTimestamp(timestamp, dateFormat)
+            // Fecha en hora local
+            reporteConUsuario.reporte.timestampCompletado?.let { timestamp ->
+                val dateText = formatTimestampToLocal(timestamp, dateFormat)
                 Text(
                     text = "Fecha: $dateText",
                     style = MaterialTheme.typography.bodyMedium,
@@ -349,16 +387,18 @@ private fun ReporteCard(
                 )
             }
 
-            // Operario
+            // Nombre del operario (o ID si no se encuentra el usuario)
+            val operarioText = reporteConUsuario.usuario?.nombreCompleto
+                ?: "Usuario ID: ${reporteConUsuario.reporte.usuarioId}"
             Text(
-                text = "Operario: ${reporte.usuarioId}",
+                text = "Operario: $operarioText",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             // Plantilla utilizada
             Text(
-                text = "Plantilla ID: ${reporte.plantillaId}",
+                text = "Plantilla ID: ${reporteConUsuario.reporte.plantillaId}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -366,12 +406,28 @@ private fun ReporteCard(
     }
 }
 
-// Función auxiliar para formatear timestamp de manera segura
-private fun formatTimestamp(timestamp: String, dateFormat: SimpleDateFormat): String {
+// Función auxiliar para formatear timestamp a hora local de Chile
+private fun formatTimestampToLocal(timestamp: String, dateFormat: SimpleDateFormat): String {
     return try {
-        val date = Date(timestamp.toLong())
-        dateFormat.format(date)
+        // El timestamp viene como ISO string, lo convertimos a Date
+        val date = if (timestamp.contains("T")) {
+            // Si es ISO format
+            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+            isoFormat.timeZone = TimeZone.getTimeZone("UTC")
+            isoFormat.parse(timestamp)
+        } else {
+            // Si es timestamp en milisegundos
+            Date(timestamp.toLong())
+        }
+
+        date?.let { dateFormat.format(it) } ?: timestamp
     } catch (e: Exception) {
-        timestamp
+        // Si hay error, intentar con diferentes formatos
+        try {
+            val date = Date(timestamp.toLong())
+            dateFormat.format(date)
+        } catch (e2: Exception) {
+            timestamp
+        }
     }
 }

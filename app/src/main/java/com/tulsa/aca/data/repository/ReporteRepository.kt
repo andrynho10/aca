@@ -5,6 +5,7 @@ import android.net.Uri
 import com.tulsa.aca.data.models.FotoRespuesta
 import com.tulsa.aca.data.models.ReporteInspeccion
 import com.tulsa.aca.data.models.RespuestaReporte
+import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.*
 import io.github.jan.supabase.postgrest.query.Order
@@ -13,6 +14,13 @@ import java.util.UUID
 data class RespuestaConFotos(
     val respuesta: RespuestaReporte,
     val fotos: List<Uri>
+)
+// Data class para reporte completo con detalles
+data class ReporteCompleto(
+    val reporte: ReporteInspeccion,
+    val usuario: Usuario?,
+    val respuestas: List<RespuestaReporte>,
+    val fotos: Map<Int, List<String>> // Map de respuestaId -> List de URLs de fotos
 )
 class ReporteRepository {
     private val client = SupabaseClient.client
@@ -126,6 +134,65 @@ class ReporteRepository {
             }.decodeList<ReporteInspeccion>()
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+    // Obtener usuario por ID
+    suspend fun obtenerUsuarioPorId(usuarioId: String): Usuario? {
+        return try {
+            client.from("usuarios").select {
+                filter {
+                    Usuario::id eq usuarioId
+                }
+            }.decodeSingle<Usuario>()
+        } catch (e: Exception) {
+            null
+        }
+    }
+    // Obtener detalles completos del reporte (para supervisores)
+    suspend fun obtenerReporteCompleto(reporteId: String): ReporteCompleto? {
+        return try {
+            // 1. Obtener el reporte
+            val reporte = client.from("reportes_inspeccion").select {
+                filter {
+                    ReporteInspeccion::id eq reporteId
+                }
+            }.decodeSingle<ReporteInspeccion>()
+
+            // 2. Obtener el usuario
+            val usuario = obtenerUsuarioPorId(reporte.usuarioId)
+
+            // 3. Obtener todas las respuestas del reporte
+            val respuestas = client.from("respuestas_reporte").select {
+                filter {
+                    RespuestaReporte::reporteId eq reporteId
+                }
+            }.decodeList<RespuestaReporte>()
+
+            // 4. Obtener todas las fotos asociadas a las respuestas
+            val fotosMap = mutableMapOf<Int, List<String>>()
+            for (respuesta in respuestas) {
+                respuesta.id?.let { respuestaId ->
+                    val fotos = client.from("fotos_respuesta").select {
+                        filter {
+                            FotoRespuesta::respuestaId eq respuestaId
+                        }
+                    }.decodeList<FotoRespuesta>()
+
+                    if (fotos.isNotEmpty()) {
+                        fotosMap[respuestaId] = fotos.map { it.urlStorage }
+                    }
+                }
+            }
+
+            ReporteCompleto(
+                reporte = reporte,
+                usuario = usuario,
+                respuestas = respuestas,
+                fotos = fotosMap
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("ChecklistApp", "ERROR AL OBTENER REPORTE COMPLETO: ${e.message}", e)
+            null
         }
     }
 }
