@@ -24,6 +24,7 @@ import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.SupervisorPanelScreen
 import com.tulsa.aca.ui.theme.ACATheme
 
 
@@ -59,6 +60,9 @@ fun ACAApp(
                 },
                 onNavigateToQRScanner = {
                     navController.navigate(Screen.QRScanner.route)
+                },
+                onNavigateToSupervisorPanel = {
+                    navController.navigate(Screen.SupervisorPanel.route)
                 }
             )
         }
@@ -130,6 +134,19 @@ fun ACAApp(
                 userRole = UserSession.getCurrentUser().rol // Usar rol real
             )
         }
+
+        composable(Screen.SupervisorPanel.route) {
+            SupervisorPanelScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onViewReportDetails = { reporteId ->
+                    // TODO: Navegar a pantalla de detalles del reporte
+                    // navController.navigate(Screen.ReportDetails.createRoute(reporteId))
+                }
+            )
+        }
+
         // Pantalla de checklist
         composable(
             route = Screen.Checklist.route,

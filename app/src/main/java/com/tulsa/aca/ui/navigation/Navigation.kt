@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object AssetHistory : Screen("asset_history/{assetId}") {
         fun createRoute(assetId: Int) = "asset_history/$assetId"
     }
+    object SupervisorPanel : Screen("supervisor_panel")
     object Checklist : Screen("checklist/{assetId}/{templateId}") {
         fun createRoute(assetId: Int, templateId: Int) = "checklist/$assetId/$templateId"
     }
