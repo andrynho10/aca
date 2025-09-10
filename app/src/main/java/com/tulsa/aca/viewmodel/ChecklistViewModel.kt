@@ -44,7 +44,7 @@ class ChecklistViewModel : ViewModel() {
                 val plantilla = plantillaRepository.obtenerPlantillaCompleta(templateId)
                 _plantillaCompleta.value = plantilla
 
-                // Inicializar respuestas vacías
+                // Solo inicializar si aún no hay respuestas (para evitar el limpiado por girar pantalla)
                 if (_respuestas.value.isEmpty()) {
                     plantilla?.let { initializeResponses(it) }
                 }
