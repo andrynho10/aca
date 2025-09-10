@@ -85,20 +85,24 @@ fun ChecklistScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(plantilla.categorias) { categoria ->
-                            CategorySection(
-                                categoria = categoria,
-                                respuestas = respuestas,
-                                onRespuestaChanged = { preguntaId, respuesta ->
-                                    viewModel.actualizarRespuesta(preguntaId, respuesta)
-                                },
-                                onComentarioChanged = { preguntaId, comentario ->
-                                    viewModel.actualizarComentario(preguntaId, comentario)
-                                },
-                                onFotosChanged = { preguntaId, fotos ->
-                                    viewModel.actualizarFotos(preguntaId, fotos)
-                                }
-                            )
+                        plantilla.categorias.forEach { categoria ->
+                            items(categoria.preguntas) { pregunta ->
+                                QuestionItem(
+                                    pregunta = pregunta,
+                                    respuesta = respuestas[pregunta.id],
+                                    onRespuestaChanged = { respuesta ->
+                                        viewModel.actualizarRespuesta(pregunta.id, respuesta)
+                                    },
+                                    onComentarioChanged = { comentario ->
+                                        viewModel.actualizarComentario(pregunta.id, comentario)
+                                    },
+                                    onFotosChanged = { fotos ->
+                                        viewModel.actualizarFotos(pregunta.id, fotos)
+                                    }
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
                         }
 
                         // Espaciado extra para el botón fijo
