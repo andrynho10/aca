@@ -18,7 +18,7 @@ data class RespuestaChecklistItem(
     val preguntaId: Int,
     val respuesta: Boolean? = null,
     val comentario: String = "",
-    val fotos: List<Uri> = emptyList() // Nueva propiedad para fotos
+    val fotos: List<Uri> = emptyList()
 )
 
 class ChecklistViewModel : ViewModel() {
@@ -58,7 +58,8 @@ class ChecklistViewModel : ViewModel() {
         plantilla.categorias.forEach { categoria ->
             categoria.preguntas.forEach { pregunta ->
                 respuestasIniciales[pregunta.id] = RespuestaChecklistItem(
-                    preguntaId = pregunta.id
+                    preguntaId = pregunta.id,
+                    respuesta = true
                 )
             }
         }

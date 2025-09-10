@@ -260,7 +260,7 @@ private fun QuestionItem(
         }
 
         // Campo de comentario (especialmente útil para respuestas negativas)
-        if (respuesta?.respuesta != null) {
+        if (respuesta?.respuesta == false) {
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
