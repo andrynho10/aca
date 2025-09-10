@@ -45,7 +45,9 @@ class ChecklistViewModel : ViewModel() {
                 _plantillaCompleta.value = plantilla
 
                 // Inicializar respuestas vacías
-                plantilla?.let { initializeResponses(it) }
+                if (_respuestas.value.isEmpty()) {
+                    plantilla?.let { initializeResponses(it) }
+                }
             } finally {
                 _isLoading.value = false
             }
