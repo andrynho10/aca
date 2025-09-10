@@ -13,14 +13,14 @@ import com.tulsa.aca.viewmodel.ActivoViewModel
 
 @Composable
 fun TestScreen(
-    modifier: Modifier = Modifier,  // <- Agregar este parámetro
+    modifier: Modifier = Modifier,
     viewModel: ActivoViewModel = viewModel()
 ) {
     val activos by viewModel.activos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
-        modifier = modifier  // <- Usar el parámetro modifier aquí
+        modifier = modifier  //
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
