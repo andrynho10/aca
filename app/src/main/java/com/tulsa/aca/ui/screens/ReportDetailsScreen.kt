@@ -23,6 +23,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tulsa.aca.data.models.*
+import com.tulsa.aca.utils.DateUtils
 import com.tulsa.aca.viewmodel.ReportDetailsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -190,7 +191,7 @@ private fun ReportInfoCard(
     usuario: Usuario?,
     activo: Activo?,
     plantilla: PlantillaChecklist?,
-    dateFormat: SimpleDateFormat
+    dateFormat: SimpleDateFormat  // No se usa, pero se mantiene por compatibilidad
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -215,14 +216,11 @@ private fun ReportInfoCard(
             )
 
             // Fecha y hora
-            reporte.timestampCompletado?.let { timestamp ->
-                val dateText = formatTimestampToLocal(timestamp, dateFormat)
-                InfoRow(
-                    icon = Icons.Default.Schedule,
-                    label = "Fecha y Hora",
-                    value = dateText
-                )
-            }
+            InfoRow(
+                icon = Icons.Default.Schedule,
+                label = "Fecha y Hora",
+                value = DateUtils.formatTimestamp(reporte.timestampCompletado)
+            )
 
             // Operario
             InfoRow(
@@ -507,26 +505,5 @@ private fun StatItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-    }
-}
-
-// Función auxiliar para formatear timestamp
-private fun formatTimestampToLocal(timestamp: String, dateFormat: SimpleDateFormat): String {
-    return try {
-        val date = if (timestamp.contains("T")) {
-            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-            isoFormat.timeZone = TimeZone.getTimeZone("UTC")
-            isoFormat.parse(timestamp)
-        } else {
-            Date(timestamp.toLong())
-        }
-        date?.let { dateFormat.format(it) } ?: timestamp
-    } catch (e: Exception) {
-        try {
-            val date = Date(timestamp.toLong())
-            dateFormat.format(date)
-        } catch (e2: Exception) {
-            timestamp
-        }
     }
 }

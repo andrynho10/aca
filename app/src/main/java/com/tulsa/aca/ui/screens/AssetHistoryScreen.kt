@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.Activo
 import com.tulsa.aca.data.models.ReporteConUsuario
+import com.tulsa.aca.utils.DateUtils
 import com.tulsa.aca.viewmodel.HistorialViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,7 +45,6 @@ fun AssetHistoryScreen(
     val currentError = uiState.error
     LaunchedEffect(currentError) {
         if (currentError != null) {
-            // Aquí podrías mostrar un SnackBar si lo deseas
             historialViewModel.limpiarError()
         }
     }
@@ -296,15 +296,8 @@ private fun EmptyHistoryCard() {
 @Composable
 private fun ReporteCard(
     reporteConUsuario: ReporteConUsuario,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
 ) {
-    // Formateo de fecha en hora local de Chile
-    val dateFormat = remember {
-        SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).apply {
-            timeZone = TimeZone.getTimeZone("America/Santiago") // Hora de Chile
-        }
-    }
-
     ElevatedCard(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -351,14 +344,11 @@ private fun ReporteCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Fecha en hora local
-            reporteConUsuario.reporte.timestampCompletado?.let { timestamp ->
-                val dateText = formatTimestampToLocal(timestamp, dateFormat)
-                Text(
-                    text = "Fecha: $dateText",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = "📅 ${DateUtils.formatTimestamp(reporteConUsuario.reporte.timestampCompletado)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             // Nombre del operario (o ID si no se encuentra el usuario)
             val operarioText = reporteConUsuario.usuario?.nombreCompleto
@@ -375,32 +365,6 @@ private fun ReporteCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-// Función auxiliar para formatear timestamp a hora local de Chile
-private fun formatTimestampToLocal(timestamp: String, dateFormat: SimpleDateFormat): String {
-    return try {
-        // El timestamp viene como ISO string, lo convertimos a Date
-        val date = if (timestamp.contains("T")) {
-            // Si es ISO format
-            val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-            isoFormat.timeZone = TimeZone.getTimeZone("UTC")
-            isoFormat.parse(timestamp)
-        } else {
-            // Si es timestamp en milisegundos
-            Date(timestamp.toLong())
-        }
-
-        date?.let { dateFormat.format(it) } ?: timestamp
-    } catch (e: Exception) {
-        // Si hay error, intentar con diferentes formatos
-        try {
-            val date = Date(timestamp.toLong())
-            dateFormat.format(date)
-        } catch (e2: Exception) {
-            timestamp
         }
     }
 }
