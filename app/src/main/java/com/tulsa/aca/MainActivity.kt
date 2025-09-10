@@ -24,6 +24,7 @@ import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.ReportDetailsScreen
 import com.tulsa.aca.ui.screens.SupervisorPanelScreen
 import com.tulsa.aca.ui.theme.ACATheme
 
@@ -125,13 +126,7 @@ fun ACAApp(
                 },
                 onNewInspection = {
                     navController.popBackStack()
-                },
-                onViewReportDetails = if (UserSession.isSupervisor()) {
-                    { reporteId ->
-                        // TODO: Implementar pantalla de detalles del reporte
-                    }
-                } else null,
-                userRole = UserSession.getCurrentUser().rol // Usar rol real
+                }
             )
         }
 
@@ -141,11 +136,24 @@ fun ACAApp(
                     navController.popBackStack()
                 },
                 onViewReportDetails = { reporteId ->
-                    // TODO: Navegar a pantalla de detalles del reporte
-                    // navController.navigate(Screen.ReportDetails.createRoute(reporteId))
+                    navController.navigate(Screen.ReportDetails.createRoute(reporteId))
                 }
             )
         }
+        // Ruta de detalles del reporte
+        composable(
+            route = Screen.ReportDetails.route,
+            arguments = listOf(navArgument("reportId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val reportId = backStackEntry.arguments?.getString("reportId") ?: ""
+            ReportDetailsScreen(
+                reporteId = reportId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
 
         // Pantalla de checklist
         composable(

@@ -11,6 +11,9 @@ sealed class Screen(val route: String) {
         fun createRoute(assetId: Int) = "asset_history/$assetId"
     }
     object SupervisorPanel : Screen("supervisor_panel")
+    object ReportDetails : Screen("report_details/{reportId}") {
+        fun createRoute(reportId: String) = "report_details/$reportId"
+    }
     object Checklist : Screen("checklist/{assetId}/{templateId}") {
         fun createRoute(assetId: Int, templateId: Int) = "checklist/$assetId/$templateId"
     }

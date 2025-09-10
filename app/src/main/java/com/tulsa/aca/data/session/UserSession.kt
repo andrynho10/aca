@@ -7,7 +7,7 @@ object UserSession {
     private val currentUser = Usuario(
         id = "e5d351ff-f07a-49c3-87d8-185c58706c75",
         nombreCompleto = "Juan Pérez", // Nombre temporal
-        rol = "SUPERVISOR" // Cambiar a "SUPERVISOR" para probar vista de supervisor
+        rol = "OPERARIO" // Cambiar a "SUPERVISOR" para probar vista de supervisor
     )
 
     fun getCurrentUser(): Usuario = currentUser

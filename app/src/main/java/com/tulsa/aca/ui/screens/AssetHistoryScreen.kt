@@ -31,15 +31,13 @@ fun AssetHistoryScreen(
     onNavigateBack: () -> Unit,
     onNewInspection: () -> Unit,
     modifier: Modifier = Modifier,
-    onViewReportDetails: ((String) -> Unit)? = null, // Para supervisores
-    userRole: String = "OPERARIO",
     historialViewModel: HistorialViewModel = viewModel()
     ) {
     val uiState by historialViewModel.uiState.collectAsState()
 
     // Cargar datos al inicializar la pantalla
     LaunchedEffect(assetId) {
-        historialViewModel.cargarHistorialActivo(assetId, userRole)
+        historialViewModel.cargarHistorialActivo(assetId)
     }
 
     // Mostrar error si existe - extraemos la variable aquí
@@ -75,7 +73,7 @@ fun AssetHistoryScreen(
             currentError != null -> {
                 ErrorContent(
                     error = currentError,
-                    onRetry = { historialViewModel.cargarHistorialActivo(assetId, userRole) }
+                    onRetry = { historialViewModel.cargarHistorialActivo(assetId) }
                 )
             }
             else -> {
@@ -83,8 +81,6 @@ fun AssetHistoryScreen(
                     activo = uiState.activo,
                     reportes = uiState.reportes,
                     onNewInspection = onNewInspection,
-                    onViewReportDetails = onViewReportDetails,
-                    userRole = uiState.tipoUsuario
                 )
             }
         }
@@ -144,9 +140,7 @@ private fun ErrorContent(
 private fun HistoryContent(
     activo: Activo?,
     reportes: List<ReporteConUsuario>,
-    onNewInspection: () -> Unit,
-    onViewReportDetails: ((String) -> Unit)?,
-    userRole: String
+    onNewInspection: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -219,10 +213,7 @@ private fun HistoryContent(
         } else {
             items(reportes) { reporteConUsuario ->
                 ReporteCard(
-                    reporteConUsuario = reporteConUsuario,
-                    onViewDetails = if (userRole == "SUPERVISOR" && onViewReportDetails != null) {
-                        { reporteConUsuario.reporte.id?.let { onViewReportDetails(it) } }
-                    } else null
+                    reporteConUsuario = reporteConUsuario
                 )
             }
         }
@@ -306,7 +297,6 @@ private fun EmptyHistoryCard() {
 private fun ReporteCard(
     reporteConUsuario: ReporteConUsuario,
     modifier: Modifier = Modifier,
-    onViewDetails: (() -> Unit)? = null
 ) {
     // Formateo de fecha en hora local de Chile
     val dateFormat = remember {
@@ -355,23 +345,6 @@ private fun ReporteCard(
                             )
                         }
                     )
-
-                    // Botón "Ver detalles" solo para supervisores
-                    if (onViewDetails != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        FilledTonalButton(
-                            onClick = onViewDetails,
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Visibility,
-                                contentDescription = "Ver detalles",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Detalles", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
                 }
             }
 
