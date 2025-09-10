@@ -27,7 +27,7 @@ fun HomeScreen(
     ) {
         // Título principal
         Text(
-            text = "App de Checklists de Activos",
+            text = "App de Checklists de Grúas Horquilla",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.primary
@@ -43,7 +43,7 @@ fun HomeScreen(
 
         // Subtítulo
         Text(
-            text = "Selecciona cómo quieres identificar el activo:",
+            text = "Selecciona cómo quieres identificar la grúa:",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 32.dp)
@@ -67,14 +67,14 @@ fun HomeScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.List,
-                    contentDescription = "Lista de activos",
+                    contentDescription = "Lista de grúas",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.width(20.dp))
                 Column {
                     Text(
-                        text = "Lista de Activos",
+                        text = "Lista de Grúas",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )

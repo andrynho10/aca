@@ -51,7 +51,7 @@ fun AssetListScreen(
     ) {
         // Top App Bar
         TopAppBar(
-            title = { Text("Seleccionar Activo") },
+            title = { Text("Seleccionar Grúa") },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(

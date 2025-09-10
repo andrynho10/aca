@@ -243,7 +243,7 @@ private fun QuestionItem(
                     )
                 } else ButtonDefaults.outlinedButtonColors()
             ) {
-                Text("SÍ")
+                Text("Bueno")
             }
 
             OutlinedButton(
@@ -255,7 +255,7 @@ private fun QuestionItem(
                     )
                 } else ButtonDefaults.outlinedButtonColors()
             ) {
-                Text("NO")
+                Text("Malo")
             }
         }
 
