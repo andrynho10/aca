@@ -18,11 +18,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.Activo
-import com.tulsa.aca.data.models.ReporteConUsuario
 import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.utils.DateUtils
 import com.tulsa.aca.viewmodel.EstadisticasSupervisor
 import com.tulsa.aca.viewmodel.FiltrosReporte
+import com.tulsa.aca.viewmodel.ReporteCompleto
 import com.tulsa.aca.viewmodel.SupervisorViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -210,8 +210,9 @@ private fun SupervisorContent(
                         )
                     }
                 }
+
                 ElevatedCard(
-                    onClick = { /* TODO: navegar a gestión de usuarios */ },
+                    onClick = { /* TODO: navegar a CRUD de checklist */ },
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
@@ -219,14 +220,14 @@ private fun SupervisorContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.People,
-                            contentDescription = "Gestionar Usuarios",
+                            imageVector = Icons.AutoMirrored.Filled.Assignment, // O Checklist
+                            contentDescription = "Gestionar Checklist",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Gestionar\nUsuarios",
+                            text = "Gestionar\nChecklist",
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
                         )
@@ -262,11 +263,11 @@ private fun SupervisorContent(
                 EmptyReportsCard()
             }
         } else {
-            items(uiState.reportes) { reporteConUsuario ->
+            items(uiState.reportes) { reporteCompleto ->
                 SupervisorReporteCard(
-                    reporteConUsuario = reporteConUsuario,
+                    reporteCompleto = reporteCompleto,
                     onViewDetails = {
-                        reporteConUsuario.reporte.id?.let { onViewReportDetails(it) }
+                        reporteCompleto.reporte.id?.let { onViewReportDetails(it) }
                     }
                 )
             }
@@ -525,7 +526,7 @@ private fun EmptyReportsCard() {
 
 @Composable
 private fun SupervisorReporteCard(
-    reporteConUsuario: ReporteConUsuario,
+    reporteCompleto: ReporteCompleto,
     onViewDetails: () -> Unit
 ) {
     ElevatedCard(
@@ -548,7 +549,7 @@ private fun SupervisorReporteCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "ID: ${reporteConUsuario.reporte.id?.take(8)}...",
+                        text = "ID: ${reporteCompleto.reporte.id?.take(8)}...",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -570,24 +571,27 @@ private fun SupervisorReporteCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Información del reporte
+            // FECHA CORREGIDA
             Text(
-                text = "📅 ${DateUtils.formatTimestamp(reporteConUsuario.reporte.timestampCompletado)}",
+                text = "📅 ${DateUtils.formatTimestamp(reporteCompleto.reporte.timestampCompletado)}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            // OPERARIO CON NOMBRE
             Text(
-                text = "👤 ${reporteConUsuario.usuario?.nombreCompleto ?: "Usuario ID: ${reporteConUsuario.reporte.usuarioId}"}",
+                text = "👤 ${reporteCompleto.usuario?.nombreCompleto ?: "Usuario ID: ${reporteCompleto.reporte.usuarioId}"}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            // ACTIVO CON NOMBRE (MEJORADO)
             Text(
-                text = "🔧 Activo ID: ${reporteConUsuario.reporte.activoId}",
+                text = "🔧 ${reporteCompleto.activo?.nombre ?: "Activo ID: ${reporteCompleto.reporte.activoId}"}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
+            // PLANTILLA CON NOMBRE (MEJORADO)
             Text(
-                text = "📋 Plantilla ID: ${reporteConUsuario.reporte.plantillaId}",
+                text = "📋 ${reporteCompleto.plantilla?.nombre ?: "Plantilla ID: ${reporteCompleto.reporte.plantillaId}"}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

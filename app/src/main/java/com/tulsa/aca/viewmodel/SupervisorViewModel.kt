@@ -3,9 +3,11 @@ package com.tulsa.aca.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.Activo
+import com.tulsa.aca.data.models.PlantillaChecklist
 import com.tulsa.aca.data.models.ReporteConUsuario
 import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.repository.ActivoRepository
+import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteRepository
 import com.tulsa.aca.data.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,8 +35,16 @@ data class EstadisticasSupervisor(
     val reportesConProblemas: Int = 0
 )
 
+// NUEVA DATA CLASS MEJORADA
+data class ReporteCompleto(
+    val reporte: com.tulsa.aca.data.models.ReporteInspeccion,
+    val usuario: Usuario?,
+    val activo: Activo?,
+    val plantilla: PlantillaChecklist?
+)
+
 data class SupervisorUiState(
-    val reportes: List<ReporteConUsuario> = emptyList(),
+    val reportes: List<ReporteCompleto> = emptyList(), // CAMBIADO DE ReporteConUsuario a ReporteCompleto
     val activos: List<Activo> = emptyList(),
     val operarios: List<Usuario> = emptyList(),
     val estadisticas: EstadisticasSupervisor = EstadisticasSupervisor(),
@@ -47,11 +57,12 @@ class SupervisorViewModel : ViewModel() {
     private val reporteRepository = ReporteRepository()
     private val activoRepository = ActivoRepository()
     private val usuarioRepository = UsuarioRepository()
+    private val plantillaRepository = PlantillaRepository() // NUEVO
 
     private val _uiState = MutableStateFlow(SupervisorUiState())
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
 
-    private var todosLosReportes: List<ReporteConUsuario> = emptyList()
+    private var todosLosReportes: List<ReporteCompleto> = emptyList()
 
     fun cargarDatosSupervisor() {
         viewModelScope.launch {
@@ -65,15 +76,31 @@ class SupervisorViewModel : ViewModel() {
                 val usuarios = usuarioRepository.obtenerTodosLosUsuarios()
                 val operarios = usuarios.filter { it.rol == "OPERARIO" }
 
-                // Cargar todos los reportes
-                val reportesTotales = mutableListOf<ReporteConUsuario>()
+                // Cargar todos los reportes CON INFORMACIÓN COMPLETA
+                val reportesTotales = mutableListOf<ReporteCompleto>()
 
                 // Para cada activo, obtener su historial
                 activos.forEach { activo ->
                     val reportesActivo = reporteRepository.obtenerHistorialPorActivo(activo.id ?: 0)
                     reportesActivo.forEach { reporte ->
+                        // Obtener información del usuario
                         val usuario = usuarioRepository.obtenerUsuarioPorId(reporte.usuarioId)
-                        reportesTotales.add(ReporteConUsuario(reporte, usuario))
+
+                        // Obtener información de la plantilla
+                        val plantilla = try {
+                            plantillaRepository.obtenerPlantillaCompleta(reporte.plantillaId)
+                        } catch (e: Exception) {
+                            null
+                        }
+
+                        reportesTotales.add(
+                            ReporteCompleto(
+                                reporte = reporte,
+                                usuario = usuario,
+                                activo = activo,
+                                plantilla = plantilla
+                            )
+                        )
                     }
                 }
 
@@ -121,11 +148,11 @@ class SupervisorViewModel : ViewModel() {
     }
 
     private fun filtrarReportes(
-        reportes: List<ReporteConUsuario>,
+        reportes: List<ReporteCompleto>,
         filtros: FiltrosReporte
-    ): List<ReporteConUsuario> {
-        return reportes.filter { reporteConUsuario ->
-            val reporte = reporteConUsuario.reporte
+    ): List<ReporteCompleto> {
+        return reportes.filter { reporteCompleto ->
+            val reporte = reporteCompleto.reporte
 
             // Filtro por activo
             if (filtros.activoSeleccionado != null &&
@@ -140,7 +167,7 @@ class SupervisorViewModel : ViewModel() {
             }
 
             // Filtros de fecha (implementación básica)
-            // En producción, se usaría una librería como java.time
+            // En producción, usar librería java.time
 
             // TODO: Implementar filtro de "solo con problemas"
             // Requeriría cargar las respuestas de cada reporte
@@ -149,7 +176,7 @@ class SupervisorViewModel : ViewModel() {
         }
     }
 
-    private fun calcularEstadisticas(reportes: List<ReporteConUsuario>): EstadisticasSupervisor {
+    private fun calcularEstadisticas(reportes: List<ReporteCompleto>): EstadisticasSupervisor {
         val hoy = Calendar.getInstance()
         val inicioSemana = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
@@ -163,8 +190,8 @@ class SupervisorViewModel : ViewModel() {
         var reportesEstaSemana = 0
         val activosSet = mutableSetOf<Int>()
 
-        reportes.forEach { reporteConUsuario ->
-            val reporte = reporteConUsuario.reporte
+        reportes.forEach { reporteCompleto ->
+            val reporte = reporteCompleto.reporte
 
             // Agregar activo al set
             activosSet.add(reporte.activoId)
@@ -177,7 +204,7 @@ class SupervisorViewModel : ViewModel() {
                     reportesEstaSemana++
 
                     // Y algunos como de hoy (simplificado)
-                    if (reportes.indexOf(reporteConUsuario) < 3) {
+                    if (reportes.indexOf(reporteCompleto) < 3) {
                         reportesHoy++
                     }
                 } catch (e: Exception) {
