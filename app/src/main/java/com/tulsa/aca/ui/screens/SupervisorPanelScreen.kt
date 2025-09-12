@@ -34,6 +34,7 @@ import java.util.TimeZone
 fun SupervisorPanelScreen(
     onNavigateBack: () -> Unit,
     onViewReportDetails: (String) -> Unit,
+    onNavigateToActivosCrud: () -> Unit,
     modifier: Modifier = Modifier,
     supervisorViewModel: SupervisorViewModel = viewModel()
 ) {
@@ -97,7 +98,8 @@ fun SupervisorPanelScreen(
                     onClearFilters = {
                         supervisorViewModel.limpiarFiltros()
                     },
-                    onViewReportDetails = onViewReportDetails
+                    onViewReportDetails = onViewReportDetails,
+                    onNavigateToActivosCrud = onNavigateToActivosCrud
                 )
             }
         }
@@ -159,7 +161,8 @@ private fun SupervisorContent(
     showFilters: Boolean,
     onFiltersChanged: (FiltrosReporte) -> Unit,
     onClearFilters: () -> Unit,
-    onViewReportDetails: (String) -> Unit
+    onViewReportDetails: (String) -> Unit,
+    onNavigateToActivosCrud: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -169,6 +172,67 @@ private fun SupervisorContent(
         // Estadísticas generales
         item {
             EstadisticasCard(estadisticas = uiState.estadisticas)
+        }
+
+        // Acciones rápidas para supervisor
+        item {
+            Text(
+                text = "Acciones de Gestión",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ElevatedCard(
+                    onClick = onNavigateToActivosCrud,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Inventory,
+                            contentDescription = "Gestionar Activos",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Gestionar\nActivos",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                ElevatedCard(
+                    onClick = { /* TODO: navegar a gestión de usuarios */ },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.People,
+                            contentDescription = "Gestionar Usuarios",
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Gestionar\nUsuarios",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
         }
 
         // Panel de filtros

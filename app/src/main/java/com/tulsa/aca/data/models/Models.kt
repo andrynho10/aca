@@ -59,13 +59,12 @@ data class CategoriaPlantilla(
 @Serializable
 data class PlantillaChecklist(
     val id: Int,
-    val nombre: String, // "Inspección Diaria Pre-Turno"
+    val nombre: String,
     @SerialName("tipo_activo")
-    val tipoActivo: String, // "Montacargas"
+    val tipoActivo: String,
     val activa: Boolean = true,
     @SerialName("created_at")
     val createdAt: String? = null,
-    // Lista de categorías (se cargará por separado)
     val categorias: List<CategoriaPlantilla> = emptyList()
 )
 

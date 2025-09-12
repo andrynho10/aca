@@ -19,6 +19,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.navigation.Screen
+import com.tulsa.aca.ui.screens.ActivosCrudScreen
 import com.tulsa.aca.ui.screens.AssetHistoryScreen
 import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
@@ -137,6 +138,9 @@ fun ACAApp(
                 },
                 onViewReportDetails = { reporteId ->
                     navController.navigate(Screen.ReportDetails.createRoute(reporteId))
+                },
+                onNavigateToActivosCrud = {
+                    navController.navigate(Screen.ActivosCrud.route)
                 }
             )
         }
@@ -153,6 +157,15 @@ fun ACAApp(
                 }
             )
         }
+        // Ruta CRUD de activos (grúas)
+        composable(Screen.ActivosCrud.route) {
+            ActivosCrudScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
 
 
         // Pantalla de checklist
