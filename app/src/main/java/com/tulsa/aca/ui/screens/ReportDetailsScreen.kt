@@ -352,7 +352,6 @@ private fun RespuestaDetailCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Reemplazar Chip con AssistChip
                 AssistChip(
                     onClick = { },
                     label = {

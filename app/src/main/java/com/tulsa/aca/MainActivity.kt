@@ -25,6 +25,7 @@ import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.PlantillasCrudScreen
 import com.tulsa.aca.ui.screens.ReportDetailsScreen
 import com.tulsa.aca.ui.screens.SupervisorPanelScreen
 import com.tulsa.aca.ui.theme.ACATheme
@@ -130,7 +131,13 @@ fun ACAApp(
                 }
             )
         }
-
+        composable(Screen.PlantillasCrud.route) {
+            PlantillasCrudScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
         composable(Screen.SupervisorPanel.route) {
             SupervisorPanelScreen(
                 onNavigateBack = {
@@ -141,6 +148,9 @@ fun ACAApp(
                 },
                 onNavigateToActivosCrud = {
                     navController.navigate(Screen.ActivosCrud.route)
+                },
+                onNavigateToPlantillasCrud = { // NUEVO
+                    navController.navigate(Screen.PlantillasCrud.route)
                 }
             )
         }

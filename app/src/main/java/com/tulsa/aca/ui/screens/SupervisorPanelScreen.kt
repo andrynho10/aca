@@ -35,6 +35,7 @@ fun SupervisorPanelScreen(
     onNavigateBack: () -> Unit,
     onViewReportDetails: (String) -> Unit,
     onNavigateToActivosCrud: () -> Unit,
+    onNavigateToPlantillasCrud: () -> Unit,
     modifier: Modifier = Modifier,
     supervisorViewModel: SupervisorViewModel = viewModel()
 ) {
@@ -99,7 +100,8 @@ fun SupervisorPanelScreen(
                         supervisorViewModel.limpiarFiltros()
                     },
                     onViewReportDetails = onViewReportDetails,
-                    onNavigateToActivosCrud = onNavigateToActivosCrud
+                    onNavigateToActivosCrud = onNavigateToActivosCrud,
+                    onNavigateToPlantillasCrud = onNavigateToPlantillasCrud
                 )
             }
         }
@@ -162,7 +164,8 @@ private fun SupervisorContent(
     onFiltersChanged: (FiltrosReporte) -> Unit,
     onClearFilters: () -> Unit,
     onViewReportDetails: (String) -> Unit,
-    onNavigateToActivosCrud: () -> Unit
+    onNavigateToActivosCrud: () -> Unit,
+    onNavigateToPlantillasCrud: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -212,7 +215,7 @@ private fun SupervisorContent(
                 }
 
                 ElevatedCard(
-                    onClick = { /* TODO: navegar a CRUD de checklist */ },
+                    onClick = onNavigateToPlantillasCrud,
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
@@ -220,7 +223,7 @@ private fun SupervisorContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Assignment, // O Checklist
+                            imageVector = Icons.Default.Assignment,
                             contentDescription = "Gestionar Checklist",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)

@@ -57,4 +57,186 @@ class PlantillaRepository {
             null
         }
     }
+    // ========================================
+    // NUEVAS FUNCIONES CRUD
+    // ========================================
+
+    suspend fun obtenerTodasLasPlantillas(): List<PlantillaChecklist> {
+        return try {
+            client.from("plantillas_checklist").select {
+                order(column = "created_at", order = Order.DESCENDING)
+            }.decodeList<PlantillaChecklist>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun crearPlantilla(plantilla: PlantillaChecklist): Int? {
+        return try {
+            val plantillaCreada = client.from("plantillas_checklist").insert(plantilla) {
+                select()
+            }.decodeSingle<PlantillaChecklist>()
+            plantillaCreada.id
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error creando plantilla: ${e.message}", e)
+            null
+        }
+    }
+
+    suspend fun actualizarPlantilla(plantilla: PlantillaChecklist): Boolean {
+        return try {
+            client.from("plantillas_checklist").update(plantilla) {
+                filter {
+                    PlantillaChecklist::id eq plantilla.id
+                }
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error actualizando plantilla: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun eliminarPlantilla(id: Int): Boolean {
+        return try {
+            client.from("plantillas_checklist").delete {
+                filter {
+                    PlantillaChecklist::id eq id
+                }
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error eliminando plantilla: ${e.message}", e)
+            false
+        }
+    }
+
+    // ========================================
+    // FUNCIONES CRUD PARA CATEGORÍAS
+    // ========================================
+
+    suspend fun crearCategoria(categoria: CategoriaPlantilla): Int? {
+        return try {
+            val categoriaCreada = client.from("categorias_plantilla").insert(categoria) {
+                select()
+            }.decodeSingle<CategoriaPlantilla>()
+            categoriaCreada.id
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error creando categoría: ${e.message}", e)
+            null
+        }
+    }
+
+    suspend fun actualizarCategoria(categoria: CategoriaPlantilla): Boolean {
+        return try {
+            client.from("categorias_plantilla").update(categoria) {
+                filter {
+                    CategoriaPlantilla::id eq categoria.id
+                }
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error actualizando categoría: ${e.message}", e)
+            false
+        }
+    }
+
+
+    suspend fun eliminarCategoria(id: Int): Boolean {
+        return try {
+            client.from("categorias_plantilla").delete {
+                filter {
+                    CategoriaPlantilla::id eq id
+                }
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error eliminando categoría: ${e.message}", e)
+            false
+        }
+    }
+
+    // ========================================
+    // FUNCIONES CRUD PARA PREGUNTAS
+    // ========================================
+
+    suspend fun crearPregunta(pregunta: PreguntaPlantilla): Int? {
+        return try {
+            val preguntaCreada = client.from("preguntas_plantilla").insert(pregunta) {
+                select()
+            }.decodeSingle<PreguntaPlantilla>()
+            preguntaCreada.id
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error creando pregunta: ${e.message}", e)
+            null
+        }
+    }
+
+    suspend fun actualizarPregunta(pregunta: PreguntaPlantilla): Boolean {
+        return try {
+            client.from("preguntas_plantilla").update(pregunta) {
+                filter {
+                    PreguntaPlantilla::id eq pregunta.id
+                }
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error actualizando pregunta: ${e.message}", e)
+            false
+        }
+    }
+
+    suspend fun eliminarPregunta(id: Int): Boolean {
+        return try {
+            client.from("preguntas_plantilla").delete {
+                filter {
+                    PreguntaPlantilla::id eq id
+                }
+            }
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error eliminando pregunta: ${e.message}", e)
+            false
+        }
+    }
+
+    // ========================================
+    // FUNCIONES AUXILIARES
+    // ========================================
+
+    suspend fun buscarPlantillasPorNombre(nombre: String): List<PlantillaChecklist> {
+        return try {
+            client.from("plantillas_checklist").select {
+                filter {
+                    PlantillaChecklist::nombre ilike "%$nombre%"
+                }
+            }.decodeList<PlantillaChecklist>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun buscarPlantillasPorTipo(tipo: String): List<PlantillaChecklist> {
+        return try {
+            client.from("plantillas_checklist").select {
+                filter {
+                    PlantillaChecklist::tipoActivo ilike "%$tipo%"
+                }
+            }.decodeList<PlantillaChecklist>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun obtenerTiposDeActivo(): List<String> {
+        return try {
+            val plantillas = client.from("plantillas_checklist").select {
+                // Solo obtener tipos únicos
+            }.decodeList<PlantillaChecklist>()
+
+            plantillas.map { it.tipoActivo }.distinct()
+        } catch (e: Exception) {
+            listOf("Montacargas", "Grúa Puente", "Carretilla Elevadora") // Valores por defecto
+        }
+    }
 }

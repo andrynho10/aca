@@ -15,6 +15,7 @@ sealed class Screen(val route: String) {
         fun createRoute(reportId: String) = "report_details/$reportId"
     }
     object ActivosCrud : Screen("activos_crud")
+    object PlantillasCrud : Screen("plantillas_crud") // AGREGAR ESTA LÍNEA
     object Checklist : Screen("checklist/{assetId}/{templateId}") {
         fun createRoute(assetId: Int, templateId: Int) = "checklist/$assetId/$templateId"
     }
