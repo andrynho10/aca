@@ -112,10 +112,7 @@ fun PlantillasCrudScreen(
                         plantillas = uiState.plantillas,
                         onViewDetails = { viewModel.mostrarDetalles(it) },
                         onEdit = { viewModel.mostrarDialogoEditar(it) },
-                        onDelete = { viewModel.mostrarDialogoEliminar(it) },
-                        onToggleActive = { plantilla, activa ->
-                            viewModel.cambiarEstadoPlantilla(plantilla, activa)
-                        }
+                        onDelete = { viewModel.mostrarDialogoEliminar(it) }
                     )
                 }
             }
@@ -263,8 +260,7 @@ private fun PlantillasList(
     plantillas: List<PlantillaChecklist>,
     onViewDetails: (PlantillaChecklist) -> Unit,
     onEdit: (PlantillaChecklist) -> Unit,
-    onDelete: (PlantillaChecklist) -> Unit,
-    onToggleActive: (PlantillaChecklist, Boolean) -> Unit
+    onDelete: (PlantillaChecklist) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -318,8 +314,7 @@ private fun PlantillasList(
                 plantilla = plantilla,
                 onViewDetails = { onViewDetails(plantilla) },
                 onEdit = { onEdit(plantilla) },
-                onDelete = { onDelete(plantilla) },
-                onToggleActive = { activa -> onToggleActive(plantilla, activa) }
+                onDelete = { onDelete(plantilla) }
             )
         }
     }
@@ -330,8 +325,7 @@ private fun PlantillaCard(
     plantilla: PlantillaChecklist,
     onViewDetails: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onToggleActive: (Boolean) -> Unit
+    onDelete: () -> Unit
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
