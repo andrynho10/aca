@@ -35,7 +35,6 @@ data class EstadisticasSupervisor(
     val reportesConProblemas: Int = 0
 )
 
-// NUEVA DATA CLASS MEJORADA
 data class ReporteCompleto(
     val reporte: com.tulsa.aca.data.models.ReporteInspeccion,
     val usuario: Usuario?,
@@ -44,7 +43,7 @@ data class ReporteCompleto(
 )
 
 data class SupervisorUiState(
-    val reportes: List<ReporteCompleto> = emptyList(), // CAMBIADO DE ReporteConUsuario a ReporteCompleto
+    val reportes: List<ReporteCompleto> = emptyList(),
     val activos: List<Activo> = emptyList(),
     val operarios: List<Usuario> = emptyList(),
     val estadisticas: EstadisticasSupervisor = EstadisticasSupervisor(),
@@ -57,7 +56,7 @@ class SupervisorViewModel : ViewModel() {
     private val reporteRepository = ReporteRepository()
     private val activoRepository = ActivoRepository()
     private val usuarioRepository = UsuarioRepository()
-    private val plantillaRepository = PlantillaRepository() // NUEVO
+    private val plantillaRepository = PlantillaRepository()
 
     private val _uiState = MutableStateFlow(SupervisorUiState())
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
@@ -199,7 +198,7 @@ class SupervisorViewModel : ViewModel() {
             // Contar reportes por fecha (implementación básica)
             reporte.timestampCompletado?.let { timestamp ->
                 try {
-                    // Aquí podrías implementar lógica más precisa de fechas
+                    // Aquí se podría implementar lógica más precisa de fechas
                     // Por ahora, contamos todos como de esta semana para demo
                     reportesEstaSemana++
 

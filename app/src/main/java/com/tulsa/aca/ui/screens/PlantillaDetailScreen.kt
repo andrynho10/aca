@@ -438,7 +438,7 @@ private fun PreguntaItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Tipo: ${pregunta.tipoRespuesta}",
+                        text = "Tipo: ${if (pregunta.tipoRespuesta == "SI_NO") "BUENO/MALO" else pregunta.tipoRespuesta}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

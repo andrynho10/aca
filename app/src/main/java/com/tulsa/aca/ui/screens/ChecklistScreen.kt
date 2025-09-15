@@ -19,6 +19,8 @@ import com.tulsa.aca.data.models.CategoriaPlantilla
 import com.tulsa.aca.data.models.PreguntaPlantilla
 import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.components.PhotoCaptureComponent
+import com.tulsa.aca.utils.toDisplayText
+import com.tulsa.aca.utils.toStatusColor
 import com.tulsa.aca.viewmodel.ChecklistViewModel
 import com.tulsa.aca.viewmodel.RespuestaChecklistItem
 
@@ -234,43 +236,63 @@ private fun QuestionItem(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Botones Sí/No
+        // Botones BUENO/MALO con colores
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            Button(
                 onClick = { onRespuestaChanged(true) },
                 modifier = Modifier.weight(1f),
                 colors = if (respuesta?.respuesta == true) {
-                    ButtonDefaults.outlinedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
                     )
-                } else ButtonDefaults.outlinedButtonColors()
+                } else {
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
             ) {
-                Text("Bueno")
+                Text(
+                    text = "BUENO",
+                    color = if (respuesta?.respuesta == true)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            OutlinedButton(
+            Button(
                 onClick = { onRespuestaChanged(false) },
                 modifier = Modifier.weight(1f),
                 colors = if (respuesta?.respuesta == false) {
-                    ButtonDefaults.outlinedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
                     )
-                } else ButtonDefaults.outlinedButtonColors()
+                } else {
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                }
             ) {
-                Text("Malo")
+                Text(
+                    text = "MALO",
+                    color = if (respuesta?.respuesta == false)
+                        MaterialTheme.colorScheme.onError
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
-        // Campo de comentario (especialmente útil para respuestas negativas)
+        // Campo de comentario (para respuestas MALO)
         if (respuesta?.respuesta == false) {
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
                 value = respuesta.comentario,
                 onValueChange = onComentarioChanged,
-                label = { Text("Comentario (opcional)") },
+                label = { Text("Comentario (requerido para estado MALO)") },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 2,
                 shape = RoundedCornerShape(8.dp)

@@ -24,6 +24,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.tulsa.aca.data.models.*
 import com.tulsa.aca.utils.DateUtils
+import com.tulsa.aca.utils.toDisplayText
+import com.tulsa.aca.utils.toStatusColor
 import com.tulsa.aca.viewmodel.ReportDetailsViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -284,14 +286,14 @@ private fun ReportStatsCard(respuestas: List<RespuestaReporte>) {
                 StatItem(
                     icon = Icons.Default.CheckCircle,
                     value = respuestasSi.toString(),
-                    label = "Respuestas SÍ",
+                    label = "Respuestas BUENO", //
                     color = MaterialTheme.colorScheme.primary
                 )
 
                 StatItem(
                     icon = Icons.Default.Cancel,
                     value = respuestasNo.toString(),
-                    label = "Respuestas NO",
+                    label = "Respuestas MALO",
                     color = MaterialTheme.colorScheme.error
                 )
 
@@ -339,8 +341,8 @@ private fun RespuestaDetailCard(
             ) {
                 Icon(
                     imageVector = if (respuesta.respuesta) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                    contentDescription = if (respuesta.respuesta) "Sí" else "No",
-                    tint = if (respuesta.respuesta) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    contentDescription = respuesta.respuesta.toDisplayText(), // CAMBIAR
+                    tint = respuesta.respuesta.toStatusColor(), // CAMBIAR
                     modifier = Modifier.size(24.dp)
                 )
 
@@ -356,7 +358,7 @@ private fun RespuestaDetailCard(
                     onClick = { },
                     label = {
                         Text(
-                            text = if (respuesta.respuesta) "SÍ" else "NO",
+                            text = respuesta.respuesta.toDisplayText(), // CAMBIAR
                             style = MaterialTheme.typography.labelMedium
                         )
                     },
