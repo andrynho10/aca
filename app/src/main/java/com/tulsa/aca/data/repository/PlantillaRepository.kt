@@ -6,6 +6,17 @@ import com.tulsa.aca.data.models.PreguntaPlantilla
 import com.tulsa.aca.data.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.*
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class PlantillaUpdate(
+    val nombre: String,
+    @SerialName("tipo_activo")
+    val tipoActivo: String,
+    val activa: Boolean
+)
+
 
 class PlantillaRepository {
     private val client = SupabaseClient.client
@@ -37,7 +48,7 @@ class PlantillaRepository {
                 filter {
                     CategoriaPlantilla::plantillaId eq plantillaId
                 }
-                order(column = "orden", order = Order.ASCENDING)  // <- Sintaxis correcta
+                order(column = "orden", order = Order.ASCENDING)
             }.decodeList<CategoriaPlantilla>()
 
             // Obtener preguntas para cada categoría
@@ -46,7 +57,7 @@ class PlantillaRepository {
                     filter {
                         PreguntaPlantilla::categoriaId eq categoria.id
                     }
-                    order(column = "orden", order = Order.ASCENDING)  // <- Sintaxis correcta
+                    order(column = "orden", order = Order.ASCENDING)
                 }.decodeList<PreguntaPlantilla>()
 
                 categoria.copy(preguntas = preguntas)
@@ -86,15 +97,25 @@ class PlantillaRepository {
     suspend fun actualizarPlantilla(plantilla: PlantillaChecklist): Boolean {
         return try {
             android.util.Log.d("PlantillaRepository", "Iniciando actualización de plantilla: ID=${plantilla.id}, activa=${plantilla.activa}")
-            client.from("plantillas_checklist").update(plantilla) {
+
+            val updateData = PlantillaUpdate(
+                nombre = plantilla.nombre,
+                tipoActivo = plantilla.tipoActivo,
+                activa = plantilla.activa
+            )
+
+            android.util.Log.d("PlantillaRepository", "Datos a actualizar: $updateData")
+
+            client.from("plantillas_checklist").update(updateData) {
                 filter {
-                    PlantillaChecklist::id eq plantilla.id
+                    eq("id", plantilla.id)
                 }
             }
+
             android.util.Log.d("PlantillaRepository", "Actualización exitosa para plantilla ID=${plantilla.id}")
             true
         } catch (e: Exception) {
-            android.util.Log.e("PlantillaRepository", "Error actualizando plantilla: ${e.message}", e)
+            android.util.Log.e("PlantillaRepository", "Error actualizando plantilla ID=${plantilla.id}: ${e.message}", e)
             false
         }
     }
@@ -238,7 +259,7 @@ class PlantillaRepository {
 
             plantillas.map { it.tipoActivo }.distinct()
         } catch (e: Exception) {
-            listOf("Montacargas", "Grúa Puente", "Carretilla Elevadora") // Valores por defecto
+            listOf("Grúa Horquilla") // Valores por defecto
         }
     }
 }
