@@ -26,6 +26,7 @@ fun PlantillaDetailScreen(
     plantilla: PlantillaChecklist?,
     onNavigateBack: () -> Unit,
     onEdit: (PlantillaChecklist) -> Unit,
+    onEditContent: (PlantillaChecklist) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (plantilla == null) {
@@ -56,10 +57,18 @@ fun PlantillaDetailScreen(
                 }
             },
             actions = {
+                // Botón para editar contenido (categorías y preguntas)
+                IconButton(onClick = { onEditContent(plantilla) }) {
+                    Icon(
+                        imageVector = Icons.Default.EditNote, // O Icons.Default.Create
+                        contentDescription = "Editar Contenido"
+                    )
+                }
+                // Botón para editar plantilla (nombre, tipo, estado)
                 IconButton(onClick = { onEdit(plantilla) }) {
                     Icon(
                         imageVector = Icons.Default.Edit,
-                        contentDescription = "Editar"
+                        contentDescription = "Editar Plantilla"
                     )
                 }
             }

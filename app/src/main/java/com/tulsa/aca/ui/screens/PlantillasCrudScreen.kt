@@ -24,6 +24,7 @@ import com.tulsa.aca.viewmodel.PlantillasCrudViewModel
 @Composable
 fun PlantillasCrudScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToEditor: (Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PlantillasCrudViewModel = viewModel()
 ) {
@@ -37,6 +38,10 @@ fun PlantillasCrudScreen(
             onEdit = { plantilla ->
                 viewModel.cerrarDialogos()
                 viewModel.mostrarDialogoEditar(plantilla)
+            },
+            onEditContent = { plantilla -> // NUEVO
+                viewModel.cerrarDialogos()
+                onNavigateToEditor(plantilla.id)
             }
         )
         return

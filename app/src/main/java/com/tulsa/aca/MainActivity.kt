@@ -25,6 +25,7 @@ import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.PlantillaEditorScreen
 import com.tulsa.aca.ui.screens.PlantillasCrudScreen
 import com.tulsa.aca.ui.screens.ReportDetailsScreen
 import com.tulsa.aca.ui.screens.SupervisorPanelScreen
@@ -135,6 +136,9 @@ fun ACAApp(
             PlantillasCrudScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToEditor = { plantillaId ->
+                    navController.navigate(Screen.PlantillaEditor.createRoute(plantillaId))
                 }
             )
         }
@@ -175,9 +179,6 @@ fun ACAApp(
                 }
             )
         }
-
-
-
         // Pantalla de checklist
         composable(
             route = Screen.Checklist.route,
@@ -199,6 +200,19 @@ fun ACAApp(
                     navController.navigate(Screen.Home.route) {
                         popUpTo(Screen.Home.route) { inclusive = false }
                     }
+                }
+            )
+        }
+        // Ruta del editor
+        composable(
+            route = Screen.PlantillaEditor.route,
+            arguments = listOf(navArgument("plantillaId") { type = NavType.IntType })
+        ) { backStackEntry ->
+            val plantillaId = backStackEntry.arguments?.getInt("plantillaId") ?: 0
+            PlantillaEditorScreen(
+                plantillaId = plantillaId,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
