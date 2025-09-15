@@ -358,8 +358,12 @@ private fun RespuestaDetailCard(
                     onClick = { },
                     label = {
                         Text(
-                            text = respuesta.respuesta.toDisplayText(), // CAMBIAR
-                            style = MaterialTheme.typography.labelMedium
+                            text = respuesta.respuesta.toDisplayText(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (respuesta.respuesta)
+                                MaterialTheme.colorScheme.onPrimaryContainer  // Texto blanco/oscuro para fondo azul
+                            else
+                                MaterialTheme.colorScheme.onErrorContainer    // Texto apropiado para fondo rojo
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
