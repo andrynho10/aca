@@ -39,7 +39,7 @@ fun PlantillasCrudScreen(
                 viewModel.cerrarDialogos()
                 viewModel.mostrarDialogoEditar(plantilla)
             },
-            onEditContent = { plantilla -> // NUEVO
+            onEditContent = { plantilla ->
                 viewModel.cerrarDialogos()
                 onNavigateToEditor(plantilla.id)
             }
@@ -350,23 +350,6 @@ private fun PlantillaCard(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-
-                        // Indicador de estado
-                        AssistChip(
-                            onClick = { }, // Sin funcionalidad
-                            label = {
-                                Text(
-                                    text = if (plantilla.activa) "Activo" else "Inactivo",
-                                    style = MaterialTheme.typography.labelSmall
-                                )
-                            },
-                            colors = AssistChipDefaults.assistChipColors(
-                                containerColor = if (plantilla.activa)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
