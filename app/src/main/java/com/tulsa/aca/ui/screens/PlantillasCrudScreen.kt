@@ -359,7 +359,7 @@ private fun PlantillaCard(
 
                         // Indicador de estado
                         AssistChip(
-                            onClick = { onToggleActive(!plantilla.activa) },
+                            onClick = { }, // Sin funcionalidad
                             label = {
                                 Text(
                                     text = if (plantilla.activa) "Activo" else "Inactivo",
