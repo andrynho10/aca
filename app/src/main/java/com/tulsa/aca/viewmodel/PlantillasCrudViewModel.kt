@@ -196,20 +196,24 @@ class PlantillasCrudViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isSaving = true, error = null)
 
             try {
+                android.util.Log.d("PlantillasCrudViewModel", "Enviando a repositorio: ID=${plantilla.id}, activa=${plantilla.activa}, nombre=${plantilla.nombre}")
                 val success = plantillaRepository.actualizarPlantilla(plantilla)
                 if (success) {
+                    android.util.Log.d("PlantillasCrudViewModel", "Repositorio reportó éxito, recargando lista")
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
                         showEditDialog = false
                     )
                     cargarPlantillas() // Recargar lista
                 } else {
+                    android.util.Log.e("PlantillasCrudViewModel", "Repositorio reportó fallo")
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
                         error = "Error al actualizar la plantilla"
                     )
                 }
             } catch (e: Exception) {
+                android.util.Log.e("PlantillasCrudViewModel", "Excepción en actualizarPlantilla: ${e.message}", e)
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     error = "Error al actualizar plantilla: ${e.message}"

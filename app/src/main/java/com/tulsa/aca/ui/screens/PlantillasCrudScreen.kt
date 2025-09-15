@@ -520,6 +520,9 @@ private fun PlantillaDialog(
                         tipoActivo = tipoSeleccionado,
                         activa = activa
                     )
+                    // LOG debug
+                    android.util.Log.d("PlantillaDialog", "Guardando plantilla: activa=$activa, nombre=${nuevaPlantilla.nombre}")
+
                     onConfirm(nuevaPlantilla)
                 },
                 enabled = isValid && !isLoading

@@ -223,7 +223,7 @@ private fun SupervisorContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Assignment,
+                            imageVector = Icons.AutoMirrored.Filled.Assignment,
                             contentDescription = "Gestionar Checklist",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(32.dp)

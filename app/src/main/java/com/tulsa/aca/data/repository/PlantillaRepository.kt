@@ -85,11 +85,13 @@ class PlantillaRepository {
 
     suspend fun actualizarPlantilla(plantilla: PlantillaChecklist): Boolean {
         return try {
+            android.util.Log.d("PlantillaRepository", "Iniciando actualización de plantilla: ID=${plantilla.id}, activa=${plantilla.activa}")
             client.from("plantillas_checklist").update(plantilla) {
                 filter {
                     PlantillaChecklist::id eq plantilla.id
                 }
             }
+            android.util.Log.d("PlantillaRepository", "Actualización exitosa para plantilla ID=${plantilla.id}")
             true
         } catch (e: Exception) {
             android.util.Log.e("PlantillaRepository", "Error actualizando plantilla: ${e.message}", e)
