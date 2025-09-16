@@ -214,7 +214,7 @@ class SupervisorViewModel : ViewModel() {
         }
     }
 
-    private fun calcularEstadisticas(reportes: List<ReporteCompleto>): EstadisticasSupervisor {
+    private suspend fun calcularEstadisticas(reportes: List<ReporteCompleto>): EstadisticasSupervisor {
         val hoy = Calendar.getInstance()
         val inicioSemana = Calendar.getInstance().apply {
             set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
@@ -228,6 +228,15 @@ class SupervisorViewModel : ViewModel() {
         var reportesEstaSemana = 0
         val activosSet = mutableSetOf<Int>()
 
+        // Obtener IDs de todos los reportes
+        val reporteIds = reportes.mapNotNull { it.reporte.id }
+
+        // UNA SOLA LLAMADA para verificar todos los reportes con problemas
+        val reportesConProblemasMap = reporteRepository.verificarReportesConProblemas(reporteIds)
+
+        // Contar reportes con problemas
+        val reportesConProblemas = reportesConProblemasMap.values.count { it }
+
         reportes.forEach { reporteCompleto ->
             val reporte = reporteCompleto.reporte
 
@@ -237,26 +246,24 @@ class SupervisorViewModel : ViewModel() {
             // Contar reportes por fecha (implementación básica)
             reporte.timestampCompletado?.let { timestamp ->
                 try {
-                    // Aquí se podría implementar lógica más precisa de fechas
-                    // Por ahora, contamos todos como de esta semana para demo
                     reportesEstaSemana++
-
-                    // Y algunos como de hoy (simplificado)
                     if (reportes.indexOf(reporteCompleto) < 3) {
                         reportesHoy++
                     }
                 } catch (e: Exception) {
-                    // Ignorar errores de parsing de fecha
+                    // Ignorar errores
                 }
             }
         }
+
+        android.util.Log.d("SupervisorVM", "Estadísticas: Total=${reportes.size}, ConProblemas=$reportesConProblemas")
 
         return EstadisticasSupervisor(
             totalReportes = reportes.size,
             reportesHoy = reportesHoy,
             reportesEstaSemana = reportesEstaSemana,
             activosInspeccionados = activosSet.size,
-            reportesConProblemas = 0 // TODO: Implementar después
+            reportesConProblemas = reportesConProblemas
         )
     }
 }

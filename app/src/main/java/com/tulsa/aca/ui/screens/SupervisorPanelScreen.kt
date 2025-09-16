@@ -281,13 +281,6 @@ private fun SupervisorContent(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-
-                    // Mostrar última actualización
-                    Text(
-                        text = "Desliza para actualizar",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
 

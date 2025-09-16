@@ -195,4 +195,35 @@ class ReporteRepository {
             null
         }
     }
+    suspend fun verificarReportesConProblemas(reporteIds: List<String>): Map<String, Boolean> {
+        if (reporteIds.isEmpty()) return emptyMap()
+
+        return try {
+            val reportesConProblemas = mutableMapOf<String, Boolean>()
+
+            // Obtener TODAS las respuestas de la tabla
+            val todasLasRespuestas = client.from("respuestas_reporte").select {
+                // Sin filtro - obtener todas
+            }.decodeList<RespuestaReporte>()
+
+            // Filtrar solo las respuestas de los reportes que nos interesan
+            val respuestasFiltradas = todasLasRespuestas.filter { it.reporteId in reporteIds }
+
+            // Agrupar por reporte y verificar problemas
+            val respuestasPorReporte = respuestasFiltradas.groupBy { it.reporteId }
+
+            reporteIds.forEach { reporteId ->
+                val respuestasDelReporte = respuestasPorReporte[reporteId] ?: emptyList()
+                val tieneProblemas = respuestasDelReporte.any { !it.respuesta }
+                reportesConProblemas[reporteId] = tieneProblemas
+            }
+
+            android.util.Log.d("ReporteRepository", "Verificados ${reporteIds.size} reportes de ${todasLasRespuestas.size} respuestas totales")
+            reportesConProblemas
+
+        } catch (e: Exception) {
+            android.util.Log.e("ReporteRepository", "Error verificando reportes: ${e.message}")
+            emptyMap()
+        }
+    }
 }
