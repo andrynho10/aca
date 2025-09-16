@@ -349,8 +349,8 @@ private fun RespuestaDetailCard(
             ) {
                 Icon(
                     imageVector = if (respuesta.respuesta) Icons.Default.CheckCircle else Icons.Default.Cancel,
-                    contentDescription = respuesta.respuesta.toDisplayText(), // CAMBIAR
-                    tint = respuesta.respuesta.toStatusColor(), // CAMBIAR
+                    contentDescription = respuesta.respuesta.toDisplayText(),
+                    tint = respuesta.respuesta.toStatusColor(),
                     modifier = Modifier.size(24.dp)
                 )
 

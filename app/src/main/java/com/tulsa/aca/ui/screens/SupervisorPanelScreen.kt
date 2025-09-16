@@ -106,7 +106,7 @@ fun SupervisorPanelScreen(
                     onViewReportDetails = onViewReportDetails,
                     onNavigateToActivosCrud = onNavigateToActivosCrud,
                     onNavigateToPlantillasCrud = onNavigateToPlantillasCrud,
-                    onRefresh = { supervisorViewModel.forzarRecarga() } // NUEVO
+                    onRefresh = { supervisorViewModel.forzarRecarga() }
                 )
             }
         }
@@ -172,7 +172,7 @@ private fun SupervisorContent(
     onViewReportDetails: (String) -> Unit,
     onNavigateToActivosCrud: () -> Unit,
     onNavigateToPlantillasCrud: () -> Unit,
-    onRefresh: () -> Unit // NUEVO PARÁMETRO
+    onRefresh: () -> Unit
 ) {
     val pullRefreshState = rememberPullRefreshState(
         refreshing = uiState.isLoading,
@@ -624,13 +624,13 @@ private fun SupervisorReporteCard(
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // ACTIVO CON NOMBRE (MEJORADO)
+            // ACTIVO CON NOMBRE
             Text(
                 text = "🔧 ${reporteCompleto.activo?.nombre ?: "Activo ID: ${reporteCompleto.reporte.activoId}"}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // PLANTILLA CON NOMBRE (MEJORADO)
+            // PLANTILLA CON NOMBRE
             Text(
                 text = "📋 ${reporteCompleto.plantilla?.nombre ?: "Plantilla ID: ${reporteCompleto.reporte.plantillaId}"}",
                 style = MaterialTheme.typography.bodySmall,

@@ -275,7 +275,7 @@ class PlantillasCrudViewModel : ViewModel() {
         }
     }
 
-    // Method para pull-to-refresh - QUITAR override
+    // Method para pull-to-refresh
     fun forzarRecarga() {
         cargarPlantillas(forzarRecarga = true)
     }
