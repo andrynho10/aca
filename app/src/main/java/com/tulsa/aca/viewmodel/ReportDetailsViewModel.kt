@@ -29,47 +29,72 @@ class ReportDetailsViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ReportDetailsUiState())
     val uiState: StateFlow<ReportDetailsUiState> = _uiState.asStateFlow()
 
-    // Caché para evitar recargas innecesarias
-    private var lastLoadedReportId: String? = null
-    private var dataLoadedSuccessfully: Boolean = false
+    // CACHÉ PERSISTENTE DURANTE TODA LA SESIÓN DE LA APP
+    companion object {
+        private val cacheReportes = mutableMapOf<String, ReporteCompleto>()
+        private val cacheActivos = mutableMapOf<Int, Activo>()
+        private val cachePlantillas = mutableMapOf<Int, PlantillaChecklist>()
+
+        // Función para limpiar caché si es necesario (ejemplo: al hacer logout)
+        fun limpiarCache() {
+            cacheReportes.clear()
+            cacheActivos.clear()
+            cachePlantillas.clear()
+        }
+    }
 
     fun cargarDetallesReporte(reporteId: String) {
-        // Si ya cargamos este reporte exitosamente, no volver a cargarlo
-        if (lastLoadedReportId == reporteId &&
-            dataLoadedSuccessfully &&
-            _uiState.value.reporteCompleto != null &&
-            _uiState.value.error == null &&
-            !_uiState.value.isLoading) {
+        // Verificar si ya tenemos este reporte en caché
+        val reporteCacheado = cacheReportes[reporteId]
 
-            android.util.Log.d("ReportDetailsVM", "Usando datos cacheados para reporte: $reporteId")
-            return
+        if (reporteCacheado != null) {
+            // Verificar si también tenemos los datos relacionados en caché
+            val activoCacheado = cacheActivos[reporteCacheado.reporte.activoId]
+            val plantillaCacheada = cachePlantillas[reporteCacheado.reporte.plantillaId]
+
+            if (activoCacheado != null && plantillaCacheada != null) {
+                android.util.Log.d("ReportDetailsVM", "Usando reporte COMPLETO desde caché: $reporteId")
+
+                _uiState.value = ReportDetailsUiState(
+                    reporteCompleto = reporteCacheado,
+                    activo = activoCacheado,
+                    plantilla = plantillaCacheada,
+                    isLoading = false,
+                    error = null
+                )
+                return
+            }
         }
 
-        android.util.Log.d("ReportDetailsVM", "Cargando datos frescos para reporte: $reporteId")
-        lastLoadedReportId = reporteId
-        dataLoadedSuccessfully = false
+        android.util.Log.d("ReportDetailsVM", "Cargando reporte desde servidor: $reporteId")
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
-                // Obtener reporte completo
-                val reporteCompleto = reporteRepository.obtenerReporteCompleto(reporteId)
-
-                android.util.Log.d("ReportDetailsVM", "Reporte cargado: ${reporteCompleto != null}")
-                android.util.Log.d("ReportDetailsVM", "Número de respuestas: ${reporteCompleto?.respuestas?.size ?: 0}")
-                android.util.Log.d("ReportDetailsVM", "Número de fotos totales: ${reporteCompleto?.fotos?.values?.sumOf { it.size } ?: 0}")
-
-                reporteCompleto?.fotos?.forEach { (respuestaId, fotos) ->
-                    android.util.Log.d("ReportDetailsVM", "Respuesta $respuestaId tiene ${fotos.size} fotos: $fotos")
-                }
+                // Obtener reporte completo (solo si no está en caché)
+                val reporteCompleto = reporteCacheado ?: reporteRepository.obtenerReporteCompleto(reporteId)
 
                 if (reporteCompleto != null) {
-                    // Obtener información del activo
-                    val activo = activoRepository.obtenerActivoPorId(reporteCompleto.reporte.activoId)
+                    // Guardar reporte en caché si es nuevo
+                    if (reporteCacheado == null) {
+                        cacheReportes[reporteId] = reporteCompleto
+                    }
 
-                    // Obtener información de la plantilla
-                    val plantilla = plantillaRepository.obtenerPlantillaCompleta(reporteCompleto.reporte.plantillaId)
+                    // Obtener activo (desde caché si está disponible)
+                    val activo = cacheActivos[reporteCompleto.reporte.activoId]
+                        ?: activoRepository.obtenerActivoPorId(reporteCompleto.reporte.activoId)?.also {
+                            cacheActivos[reporteCompleto.reporte.activoId] = it
+                        }
+
+                    // Obtener plantilla (desde caché si está disponible)
+                    val plantilla = cachePlantillas[reporteCompleto.reporte.plantillaId]
+                        ?: plantillaRepository.obtenerPlantillaCompleta(reporteCompleto.reporte.plantillaId)?.also {
+                            cachePlantillas[reporteCompleto.reporte.plantillaId] = it
+                        }
+
+                    android.util.Log.d("ReportDetailsVM", "Reporte cargado y guardado en caché: $reporteId")
+                    android.util.Log.d("ReportDetailsVM", "Caché actual: ${cacheReportes.size} reportes, ${cacheActivos.size} activos, ${cachePlantillas.size} plantillas")
 
                     _uiState.value = _uiState.value.copy(
                         reporteCompleto = reporteCompleto,
@@ -79,7 +104,6 @@ class ReportDetailsViewModel : ViewModel() {
                         error = null
                     )
 
-                    dataLoadedSuccessfully = true
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -97,10 +121,14 @@ class ReportDetailsViewModel : ViewModel() {
         }
     }
 
-    // Method para forzar recarga si es necesario
+    // Método para forzar recarga (elimina del caché y vuelve a cargar)
     fun forzarRecarga(reporteId: String) {
-        lastLoadedReportId = null
-        dataLoadedSuccessfully = false
+        cacheReportes.remove(reporteId)
         cargarDetallesReporte(reporteId)
+    }
+
+    // Información de debugging del caché
+    fun obtenerInfoCache(): String {
+        return "Caché: ${cacheReportes.size} reportes, ${cacheActivos.size} activos, ${cachePlantillas.size} plantillas"
     }
 }
