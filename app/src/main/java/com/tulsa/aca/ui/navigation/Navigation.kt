@@ -22,4 +22,13 @@ sealed class Screen(val route: String) {
     object Checklist : Screen("checklist/{assetId}/{templateId}") {
         fun createRoute(assetId: Int, templateId: Int) = "checklist/$assetId/$templateId"
     }
+    object PhotoViewer : Screen("photo_viewer/{photos}/{initialIndex}") {
+        fun createRoute(photos: List<String>, initialIndex: Int = 0): String {
+            // Codificar las URLs de las fotos para pasarlas como parámetro
+            val photosEncoded = photos.joinToString(",") {
+                java.net.URLEncoder.encode(it, "UTF-8")
+            }
+            return "photo_viewer/$photosEncoded/$initialIndex"
+        }
+    }
 }

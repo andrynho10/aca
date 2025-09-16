@@ -5,10 +5,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -101,7 +105,8 @@ fun SupervisorPanelScreen(
                     },
                     onViewReportDetails = onViewReportDetails,
                     onNavigateToActivosCrud = onNavigateToActivosCrud,
-                    onNavigateToPlantillasCrud = onNavigateToPlantillasCrud
+                    onNavigateToPlantillasCrud = onNavigateToPlantillasCrud,
+                    onRefresh = { supervisorViewModel.forzarRecarga() } // NUEVO
                 )
             }
         }
@@ -157,6 +162,7 @@ private fun ErrorContent(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 private fun SupervisorContent(
     uiState: com.tulsa.aca.viewmodel.SupervisorUiState,
@@ -165,116 +171,148 @@ private fun SupervisorContent(
     onClearFilters: () -> Unit,
     onViewReportDetails: (String) -> Unit,
     onNavigateToActivosCrud: () -> Unit,
-    onNavigateToPlantillasCrud: () -> Unit
+    onNavigateToPlantillasCrud: () -> Unit,
+    onRefresh: () -> Unit // NUEVO PARÁMETRO
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = uiState.isLoading,
+        onRefresh = onRefresh
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pullRefresh(pullRefreshState)
     ) {
-        // Estadísticas generales
-        item {
-            EstadisticasCard(estadisticas = uiState.estadisticas)
-        }
-
-        // Acciones rápidas para supervisor
-        item {
-            Text(
-                text = "Acciones de Gestión",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ElevatedCard(
-                    onClick = onNavigateToActivosCrud,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Inventory,
-                            contentDescription = "Gestionar Activos",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Gestionar\nActivos",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                ElevatedCard(
-                    onClick = onNavigateToPlantillasCrud,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Assignment,
-                            contentDescription = "Gestionar Checklist",
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Gestionar\nChecklist",
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-
-        // Panel de filtros
-        if (showFilters) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Estadísticas generales
             item {
-                FiltrosCard(
-                    activos = uiState.activos,
-                    operarios = uiState.operarios,
-                    filtrosActuales = uiState.filtros,
-                    onFiltersChanged = onFiltersChanged,
-                    onClearFilters = onClearFilters
+                EstadisticasCard(estadisticas = uiState.estadisticas)
+            }
+
+            // Acciones de gestión
+            item {
+                Text(
+                    text = "Acciones de Gestión",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
             }
-        }
 
-        // Lista de reportes
-        item {
-            Text(
-                text = "Reportes Recientes (${uiState.reportes.size})",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        if (uiState.reportes.isEmpty()) {
             item {
-                EmptyReportsCard()
-            }
-        } else {
-            items(uiState.reportes) { reporteCompleto ->
-                SupervisorReporteCard(
-                    reporteCompleto = reporteCompleto,
-                    onViewDetails = {
-                        reporteCompleto.reporte.id?.let { onViewReportDetails(it) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ElevatedCard(
+                        onClick = onNavigateToActivosCrud,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Inventory,
+                                contentDescription = "Gestionar Activos",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Gestionar\nActivos",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
-                )
+
+                    ElevatedCard(
+                        onClick = onNavigateToPlantillasCrud,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Assignment,
+                                contentDescription = "Gestionar Checklist",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Gestionar\nChecklist",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Panel de filtros
+            if (showFilters) {
+                item {
+                    FiltrosCard(
+                        activos = uiState.activos,
+                        operarios = uiState.operarios,
+                        filtrosActuales = uiState.filtros,
+                        onFiltersChanged = onFiltersChanged,
+                        onClearFilters = onClearFilters
+                    )
+                }
+            }
+
+            // Lista de reportes
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Reportes Recientes (${uiState.reportes.size})",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Mostrar última actualización
+                    Text(
+                        text = "Desliza para actualizar",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (uiState.reportes.isEmpty()) {
+                item {
+                    EmptyReportsCard()
+                }
+            } else {
+                items(uiState.reportes) { reporteCompleto ->
+                    SupervisorReporteCard(
+                        reporteCompleto = reporteCompleto,
+                        onViewDetails = {
+                            reporteCompleto.reporte.id?.let { onViewReportDetails(it) }
+                        }
+                    )
+                }
             }
         }
+
+        // Indicador de pull-to-refresh
+        PullRefreshIndicator(
+            refreshing = uiState.isLoading,
+            state = pullRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
     }
 }
 

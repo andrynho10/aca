@@ -132,6 +132,11 @@ class ChecklistViewModel : ViewModel() {
                 )
 
                 if (success) {
+                    android.util.Log.d("ChecklistVM", "Checklist guardado exitosamente")
+                    // Log de cuántas fotos se intentaron guardar
+                    val totalFotos = respuestasConFotos.sumOf { it.fotos.size }
+                    android.util.Log.d("ChecklistVM", "Total de fotos guardadas: $totalFotos")
+
                     onSuccess()
                 } else {
                     onError("Error al guardar el checklist")

@@ -63,7 +63,39 @@ class SupervisorViewModel : ViewModel() {
 
     private var todosLosReportes: List<ReporteCompleto> = emptyList()
 
-    fun cargarDatosSupervisor() {
+    // Caché para evitar recargas innecesarias
+    private var datosYaCargados = false
+    private var ultimaCargaExitosa = false
+    private var ultimaActualizacion = 0L
+    private val CACHE_EXPIRY = 3 * 60 * 1000L // 3 minutos
+
+    fun cargarDatosSupervisor(forzarRecarga: Boolean = false) {
+        val ahora = System.currentTimeMillis()
+        val cacheExpirado = (ahora - ultimaActualizacion) > CACHE_EXPIRY
+
+        // Usar caché si está fresco y no se fuerza recarga
+        if (!forzarRecarga &&
+            datosYaCargados &&
+            ultimaCargaExitosa &&
+            !cacheExpirado &&
+            _uiState.value.reportes.isNotEmpty() &&
+            _uiState.value.error == null &&
+            !_uiState.value.isLoading) {
+
+            android.util.Log.d("SupervisorVM", "Usando datos cacheados (${(ahora - ultimaActualizacion)/1000}s antiguos)")
+            return
+        }
+
+        val tipoRecarga = when {
+            forzarRecarga -> "forzada"
+            cacheExpirado -> "por expiración (${(ahora - ultimaActualizacion)/1000}s)"
+            else -> "inicial"
+        }
+        android.util.Log.d("SupervisorVM", "Cargando datos frescos - Razón: $tipoRecarga")
+
+        datosYaCargados = true
+        ultimaCargaExitosa = false
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -78,14 +110,10 @@ class SupervisorViewModel : ViewModel() {
                 // Cargar todos los reportes CON INFORMACIÓN COMPLETA
                 val reportesTotales = mutableListOf<ReporteCompleto>()
 
-                // Para cada activo, obtener su historial
                 activos.forEach { activo ->
                     val reportesActivo = reporteRepository.obtenerHistorialPorActivo(activo.id ?: 0)
                     reportesActivo.forEach { reporte ->
-                        // Obtener información del usuario
                         val usuario = usuarioRepository.obtenerUsuarioPorId(reporte.usuarioId)
-
-                        // Obtener información de la plantilla
                         val plantilla = try {
                             plantillaRepository.obtenerPlantillaCompleta(reporte.plantillaId)
                         } catch (e: Exception) {
@@ -107,7 +135,6 @@ class SupervisorViewModel : ViewModel() {
                     it.reporte.timestampCompletado
                 }
 
-                // Calcular estadísticas
                 val estadisticas = calcularEstadisticas(todosLosReportes)
 
                 _uiState.value = _uiState.value.copy(
@@ -118,7 +145,11 @@ class SupervisorViewModel : ViewModel() {
                     isLoading = false
                 )
 
+                ultimaActualizacion = ahora
+                ultimaCargaExitosa = true
+
             } catch (e: Exception) {
+                android.util.Log.e("SupervisorVM", "Error cargando datos: ${e.message}", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = "Error al cargar datos: ${e.message}"
@@ -127,6 +158,14 @@ class SupervisorViewModel : ViewModel() {
         }
     }
 
+    // Method para pull-to-refresh
+    fun forzarRecarga() {
+        cargarDatosSupervisor(forzarRecarga = true)
+    }
+    // Invalidar caché cuando llega un nuevo reporte (para uso futuro)
+    fun invalidarCachePorNuevoReporte() {
+        ultimaActualizacion = 0L // Fuerza expiración inmediata
+    }
     fun aplicarFiltros(filtros: FiltrosReporte) {
         val reportesFiltrados = filtrarReportes(todosLosReportes, filtros)
         _uiState.value = _uiState.value.copy(

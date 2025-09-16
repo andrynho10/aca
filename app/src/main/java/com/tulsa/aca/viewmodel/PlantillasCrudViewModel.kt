@@ -33,6 +33,12 @@ class PlantillasCrudViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(PlantillasCrudUiState())
     val uiState: StateFlow<PlantillasCrudUiState> = _uiState.asStateFlow()
 
+    // Caché con tiempo de expiración
+    private var datosYaCargados = false
+    private var ultimaCargaExitosa = false
+    private var ultimaActualizacion = 0L
+    private val CACHE_EXPIRY = 5 * 60 * 1000L // 5 minutos para plantillas
+
     init {
         cargarDatosIniciales()
     }
@@ -44,7 +50,26 @@ class PlantillasCrudViewModel : ViewModel() {
         }
     }
 
-    fun cargarPlantillas() {
+    fun cargarPlantillas(forzarRecarga: Boolean = false) {
+        val ahora = System.currentTimeMillis()
+        val cacheExpirado = (ahora - ultimaActualizacion) > CACHE_EXPIRY
+
+        if (!forzarRecarga &&
+            datosYaCargados &&
+            ultimaCargaExitosa &&
+            !cacheExpirado &&
+            _uiState.value.searchQuery.isBlank() &&
+            _uiState.value.plantillas.isNotEmpty() &&
+            _uiState.value.error == null &&
+            !_uiState.value.isLoading) {
+
+            android.util.Log.d("PlantillasCrudVM", "Usando plantillas cacheadas (${(ahora - ultimaActualizacion)/1000}s)")
+            return
+        }
+
+        android.util.Log.d("PlantillasCrudVM", "Cargando plantillas frescas")
+        ultimaCargaExitosa = false
+
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -54,6 +79,9 @@ class PlantillasCrudViewModel : ViewModel() {
                     plantillas = plantillas,
                     isLoading = false
                 )
+                datosYaCargados = true
+                ultimaCargaExitosa = true
+                ultimaActualizacion = ahora
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -69,9 +97,8 @@ class PlantillasCrudViewModel : ViewModel() {
                 val tipos = plantillaRepository.obtenerTiposDeActivo()
                 _uiState.value = _uiState.value.copy(tiposActivo = tipos)
             } catch (e: Exception) {
-                // Usar tipos por defecto si hay error
                 _uiState.value = _uiState.value.copy(
-                    tiposActivo = listOf("Montacargas", "Grúa Puente", "Carretilla Elevadora")
+                    tiposActivo = listOf("Grúa Horquilla")
                 )
             }
         }
@@ -89,11 +116,9 @@ class PlantillasCrudViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                // Buscar por nombre y por tipo
                 val plantillasPorNombre = plantillaRepository.buscarPlantillasPorNombre(query)
                 val plantillasPorTipo = plantillaRepository.buscarPlantillasPorTipo(query)
 
-                // Combinar resultados sin duplicados
                 val plantillasEncontradas = (plantillasPorNombre + plantillasPorTipo)
                     .distinctBy { it.id }
 
@@ -175,7 +200,8 @@ class PlantillasCrudViewModel : ViewModel() {
                         isSaving = false,
                         showCreateDialog = false
                     )
-                    cargarPlantillas() // Recargar lista
+                    invalidarCache()
+                    cargarPlantillas()
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
@@ -196,24 +222,21 @@ class PlantillasCrudViewModel : ViewModel() {
             _uiState.value = _uiState.value.copy(isSaving = true, error = null)
 
             try {
-                android.util.Log.d("PlantillasCrudViewModel", "Enviando a repositorio: ID=${plantilla.id}, activa=${plantilla.activa}, nombre=${plantilla.nombre}")
                 val success = plantillaRepository.actualizarPlantilla(plantilla)
                 if (success) {
-                    android.util.Log.d("PlantillasCrudViewModel", "Repositorio reportó éxito, recargando lista")
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
                         showEditDialog = false
                     )
-                    cargarPlantillas() // Recargar lista
+                    invalidarCache()
+                    cargarPlantillas()
                 } else {
-                    android.util.Log.e("PlantillasCrudViewModel", "Repositorio reportó fallo")
                     _uiState.value = _uiState.value.copy(
                         isSaving = false,
                         error = "Error al actualizar la plantilla"
                     )
                 }
             } catch (e: Exception) {
-                android.util.Log.e("PlantillasCrudViewModel", "Excepción en actualizarPlantilla: ${e.message}", e)
                 _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     error = "Error al actualizar plantilla: ${e.message}"
@@ -235,7 +258,8 @@ class PlantillasCrudViewModel : ViewModel() {
                         isDeleting = false,
                         showDeleteDialog = false
                     )
-                    cargarPlantillas() // Recargar lista
+                    invalidarCache()
+                    cargarPlantillas()
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isDeleting = false,
@@ -249,6 +273,17 @@ class PlantillasCrudViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    // Method para pull-to-refresh - QUITAR override
+    fun forzarRecarga() {
+        cargarPlantillas(forzarRecarga = true)
+    }
+
+    private fun invalidarCache() {
+        datosYaCargados = false
+        ultimaCargaExitosa = false
+        ultimaActualizacion = 0L
     }
 
     fun cambiarEstadoPlantilla(plantilla: PlantillaChecklist, activa: Boolean) {

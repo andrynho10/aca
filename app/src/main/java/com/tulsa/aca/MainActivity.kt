@@ -25,6 +25,7 @@ import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.PhotoViewerScreen
 import com.tulsa.aca.ui.screens.PlantillaEditorScreen
 import com.tulsa.aca.ui.screens.PlantillasCrudScreen
 import com.tulsa.aca.ui.screens.ReportDetailsScreen
@@ -168,6 +169,9 @@ fun ACAApp(
                 reporteId = reportId,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onViewPhoto = { photos, index -> // AGREGAR ESTE CALLBACK
+                    navController.navigate(Screen.PhotoViewer.createRoute(photos, index))
                 }
             )
         }
@@ -211,6 +215,30 @@ fun ACAApp(
             val plantillaId = backStackEntry.arguments?.getInt("plantillaId") ?: 0
             PlantillaEditorScreen(
                 plantillaId = plantillaId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        // Ruta PhotoViewer
+        composable(
+            route = Screen.PhotoViewer.route,
+            arguments = listOf(
+                navArgument("photos") { type = NavType.StringType },
+                navArgument("initialIndex") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val photosEncoded = backStackEntry.arguments?.getString("photos") ?: ""
+            val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
+
+            // Decodificar las URLs
+            val photos = photosEncoded.split(",").map {
+                java.net.URLDecoder.decode(it, "UTF-8")
+            }
+
+            PhotoViewerScreen(
+                photos = photos,
+                initialIndex = initialIndex,
                 onNavigateBack = {
                     navController.popBackStack()
                 }

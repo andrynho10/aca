@@ -102,4 +102,10 @@ dependencies {
 
     // Compresión de imágenes
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // Zoom imágenes
+    implementation("net.engawapg.lib:zoomable:1.6.1")
+
+    // Pull to refresh
+    implementation("androidx.compose.material:material:1.5.4")
 }

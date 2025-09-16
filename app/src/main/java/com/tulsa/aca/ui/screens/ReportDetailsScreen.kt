@@ -35,6 +35,7 @@ import java.util.*
 fun ReportDetailsScreen(
     reporteId: String,
     onNavigateBack: () -> Unit,
+    onViewPhoto: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ReportDetailsViewModel = viewModel()
 ) {
@@ -80,7 +81,8 @@ fun ReportDetailsScreen(
                 ReportDetailsContent(
                     reporteCompleto = reporteCompleto,
                     activo = uiState.activo,
-                    plantilla = uiState.plantilla
+                    plantilla = uiState.plantilla,
+                    onViewPhoto = onViewPhoto
                 )
             }
         }
@@ -140,7 +142,8 @@ private fun ReportDetailsErrorContent(
 private fun ReportDetailsContent(
     reporteCompleto: com.tulsa.aca.data.repository.ReporteCompleto,
     activo: Activo?,
-    plantilla: PlantillaChecklist?
+    plantilla: PlantillaChecklist?,
+    onViewPhoto: (List<String>, Int) -> Unit
 ) {
     val dateFormat = remember {
         SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).apply {
@@ -179,14 +182,18 @@ private fun ReportDetailsContent(
         }
 
         items(reporteCompleto.respuestas) { respuesta ->
+            val fotosParaEstaRespuesta = respuesta.id?.let { respuestaId ->
+                reporteCompleto.fotos[respuestaId] ?: emptyList()
+            } ?: emptyList()
+
             RespuestaDetailCard(
                 respuesta = respuesta,
-                fotos = reporteCompleto.fotos[respuesta.id] ?: emptyList()
+                fotos = fotosParaEstaRespuesta,
+                onViewPhoto = onViewPhoto
             )
         }
     }
 }
-
 @Composable
 private fun ReportInfoCard(
     reporte: ReporteInspeccion,
@@ -328,7 +335,8 @@ private fun ReportStatsCard(respuestas: List<RespuestaReporte>) {
 @Composable
 private fun RespuestaDetailCard(
     respuesta: RespuestaReporte,
-    fotos: List<String>
+    fotos: List<String>,
+    onViewPhoto: (List<String>, Int) -> Unit
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -404,41 +412,43 @@ private fun RespuestaDetailCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    fotos.take(3).forEach { fotoUrl ->
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(fotoUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Foto de evidencia",
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                    fotos.take(3).forEachIndexed { index, fotoUrl ->
+                        Card(
+                            onClick = {
+                                // Navegar al visor de fotos
+                                onViewPhoto(fotos, index)
+                            },
+                            modifier = Modifier.size(80.dp)
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(fotoUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Foto de evidencia",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
 
                     if (fotos.size > 3) {
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                        Card(
+                            onClick = {
+                                // Ver todas las fotos empezando desde la 4ta
+                                onViewPhoto(fotos, 3)
+                            },
+                            modifier = Modifier.size(80.dp)
                         ) {
-                            Card(
+                            Box(
                                 modifier = Modifier.fillMaxSize(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "+${fotos.size - 3}",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                }
+                                Text(
+                                    text = "+${fotos.size - 3}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
                             }
                         }
                     }
