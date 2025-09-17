@@ -93,8 +93,8 @@ fun HomeScreen(
                 painter = painterResource(id = R.drawable.logo_empresa),
                 contentDescription = "Logo TULSA",
                 modifier = Modifier
-                    .size(200.dp)
-                    .offset(x = (-10).dp),
+                    .size(225.dp)
+                    .offset(x = (-6).dp, y = (-20).dp),
                 contentScale = ContentScale.Fit
             )
             // Saludo personalizado

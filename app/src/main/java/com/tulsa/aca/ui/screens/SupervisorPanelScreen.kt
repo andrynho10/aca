@@ -242,7 +242,7 @@ private fun SupervisorContent(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Assignment,
                                 contentDescription = "Gestionar Checklist",
-                                tint = MaterialTheme.colorScheme.secondary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
