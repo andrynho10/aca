@@ -10,5 +10,5 @@ data class HistorialUiState(
     val reportes: List<ReporteConUsuario> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val tipoUsuario: String = "OPERARIO" // Por defecto operario
+    val tipoUsuario: String = "OPERADOR" // Por defecto operador
 )

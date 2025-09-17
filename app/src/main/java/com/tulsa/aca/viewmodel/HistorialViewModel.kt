@@ -20,7 +20,7 @@ class HistorialViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(HistorialUiState())
     val uiState: StateFlow<HistorialUiState> = _uiState.asStateFlow()
 
-    fun cargarHistorialActivo(activoId: Int, tipoUsuario: String = "OPERARIO") {
+    fun cargarHistorialActivo(activoId: Int, tipoUsuario: String = "OPERADOR") {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isLoading = true,

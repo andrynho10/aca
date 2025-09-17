@@ -37,7 +37,7 @@ class PlantillasCrudViewModel : ViewModel() {
     private var datosYaCargados = false
     private var ultimaCargaExitosa = false
     private var ultimaActualizacion = 0L
-    private val CACHE_EXPIRY = 5 * 60 * 1000L // 5 minutos para plantillas
+    private val cacheExpiry = 5 * 60 * 1000L // 5 minutos para plantillas
 
     init {
         cargarDatosIniciales()
@@ -52,7 +52,7 @@ class PlantillasCrudViewModel : ViewModel() {
 
     fun cargarPlantillas(forzarRecarga: Boolean = false) {
         val ahora = System.currentTimeMillis()
-        val cacheExpirado = (ahora - ultimaActualizacion) > CACHE_EXPIRY
+        val cacheExpirado = (ahora - ultimaActualizacion) > cacheExpiry
 
         if (!forzarRecarga &&
             datosYaCargados &&

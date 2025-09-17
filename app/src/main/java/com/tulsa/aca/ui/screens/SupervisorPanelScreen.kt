@@ -261,7 +261,7 @@ private fun SupervisorContent(
                 item {
                     FiltrosCard(
                         activos = uiState.activos,
-                        operarios = uiState.operarios,
+                        operadores = uiState.operadores,
                         filtrosActuales = uiState.filtros,
                         onFiltersChanged = onFiltersChanged,
                         onClearFilters = onClearFilters
@@ -407,13 +407,13 @@ private fun EstadisticaItem(
 @Composable
 private fun FiltrosCard(
     activos: List<Activo>,
-    operarios: List<Usuario>,
+    operadores: List<Usuario>,
     filtrosActuales: FiltrosReporte,
     onFiltersChanged: (FiltrosReporte) -> Unit,
     onClearFilters: () -> Unit
 ) {
     var activoExpandido by remember { mutableStateOf(false) }
-    var operarioExpandido by remember { mutableStateOf(false) }
+    var operadorExpandido by remember { mutableStateOf(false) }
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -481,18 +481,18 @@ private fun FiltrosCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filtro por operario
+            // Filtro por operador
             ExposedDropdownMenuBox(
-                expanded = operarioExpandido,
-                onExpandedChange = { operarioExpandido = !operarioExpandido }
+                expanded = operadorExpandido,
+                onExpandedChange = { operadorExpandido = !operadorExpandido }
             ) {
                 OutlinedTextField(
-                    value = filtrosActuales.operarioSeleccionado?.nombreCompleto ?: "Todos los operarios",
+                    value = filtrosActuales.operadorSeleccionado?.nombreCompleto ?: "Todos los operadores",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Operario") },
+                    label = { Text("Operador") },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = operarioExpandido)
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = operadorExpandido)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -500,22 +500,22 @@ private fun FiltrosCard(
                 )
 
                 ExposedDropdownMenu(
-                    expanded = operarioExpandido,
-                    onDismissRequest = { operarioExpandido = false }
+                    expanded = operadorExpandido,
+                    onDismissRequest = { operadorExpandido = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Todos los operarios") },
+                        text = { Text("Todos los operadores") },
                         onClick = {
-                            onFiltersChanged(filtrosActuales.copy(operarioSeleccionado = null))
-                            operarioExpandido = false
+                            onFiltersChanged(filtrosActuales.copy(operadorSeleccionado = null))
+                            operadorExpandido = false
                         }
                     )
-                    operarios.forEach { operario ->
+                    operadores.forEach { operador ->
                         DropdownMenuItem(
-                            text = { Text(operario.nombreCompleto) },
+                            text = { Text(operador.nombreCompleto) },
                             onClick = {
-                                onFiltersChanged(filtrosActuales.copy(operarioSeleccionado = operario))
-                                operarioExpandido = false
+                                onFiltersChanged(filtrosActuales.copy(operadorSeleccionado = operador))
+                                operadorExpandido = false
                             }
                         )
                     }
@@ -549,7 +549,7 @@ private fun EmptyReportsCard() {
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Los reportes aparecerán aquí cuando los operarios completen inspecciones",
+                text = "Los reportes aparecerán aquí cuando los operadores completen inspecciones",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -611,7 +611,7 @@ private fun SupervisorReporteCard(
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // OPERARIO CON NOMBRE
+            // OPERADORO CON NOMBRE
             Text(
                 text = "👤 ${reporteCompleto.usuario?.nombreCompleto ?: "Usuario ID: ${reporteCompleto.reporte.usuarioId}"}",
                 style = MaterialTheme.typography.bodyMedium

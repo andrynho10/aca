@@ -1,5 +1,6 @@
 package com.tulsa.aca.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -11,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -18,6 +21,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tulsa.aca.R
 import com.tulsa.aca.viewmodel.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,13 +60,14 @@ fun LoginScreen(
         verticalArrangement = Arrangement.Center
     ) {
         // Logo/Título
-        Text(
-            text = "Tulsa S.A.",
-            style = MaterialTheme.typography.displayLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+        Image(
+            painter = painterResource(id = R.drawable.logo_empresa),
+            contentDescription = "Logo TULSA",
+            modifier = Modifier
+                .size(225.dp)
+                .offset(x = (-10).dp),
+            contentScale = ContentScale.Fit
         )
-
         Text(
             text = "Checklist Inspección Grúas Horquilla",
             style = MaterialTheme.typography.titleMedium,
@@ -148,7 +153,7 @@ fun LoginScreen(
 
                 // Usuarios de prueba
                 Text(
-                    text = "Usuarios de prueba:\n• operario@test.com\n• supervisor@test.com\nContraseña: password123",
+                    text = "Usuarios de prueba:\n• operador@test.com\n• supervisor@test.com\nContraseña: password123",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

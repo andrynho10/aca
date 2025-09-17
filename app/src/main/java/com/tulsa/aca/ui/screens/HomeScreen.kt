@@ -1,5 +1,6 @@
 package com.tulsa.aca.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,9 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.tulsa.aca.R
 import com.tulsa.aca.data.session.UserSession
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,6 +31,7 @@ fun HomeScreen(
 ) {
     // Obtener el usuario actual
     val currentUser = UserSession.getCurrentUser()
+    val isOperador = currentUser.rol == "OPERADOR"
     val isSupervisor = currentUser.rol == "SUPERVISOR"
 
     // LOG PARA DEBUG
@@ -60,7 +65,7 @@ fun HomeScreen(
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 )
 
@@ -84,6 +89,14 @@ fun HomeScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.logo_empresa),
+                contentDescription = "Logo TULSA",
+                modifier = Modifier
+                    .size(200.dp)
+                    .offset(x = (-10).dp),
+                contentScale = ContentScale.Fit
+            )
             // Saludo personalizado
             Text(
                 text = "Bienvenido/a",
@@ -142,7 +155,7 @@ fun HomeScreen(
                     }
                 }
             } else {
-                // VISTA PARA OPERARIOS - Opciones de inspección
+                // VISTA PARA OPERADORES - Opciones de inspección
                 Text(
                     text = "Selecciona cómo quieres identificar la grúa:",
                     style = MaterialTheme.typography.bodyLarge,

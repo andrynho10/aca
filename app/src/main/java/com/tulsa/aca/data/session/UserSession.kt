@@ -17,10 +17,10 @@ object UserSession {
 
     fun getCurrentUser(): Usuario {
         return currentUser ?: Usuario(
-            id = "operario-test-001",
+            id = "operador-test-001",
             nombreCompleto = "Usuario de Prueba",
             email = "test@test.com",
-            rol = "OPERARIO"
+            rol = "OPERADOR"
         )
     }
 

@@ -350,11 +350,11 @@ private fun ReporteCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            // Nombre del operario (o ID si no se encuentra el usuario)
-            val operarioText = reporteConUsuario.usuario?.nombreCompleto
+            // Nombre del operador (o ID si no se encuentra el usuario)
+            val operadorText = reporteConUsuario.usuario?.nombreCompleto
                 ?: "Usuario ID: ${reporteConUsuario.reporte.usuarioId}"
             Text(
-                text = "Operario: $operarioText",
+                text = "Operador: $operadorText",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

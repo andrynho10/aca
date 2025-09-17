@@ -189,6 +189,7 @@ private fun ReportDetailsContent(
             RespuestaDetailCard(
                 respuesta = respuesta,
                 fotos = fotosParaEstaRespuesta,
+                plantilla = plantilla,
                 onViewPhoto = onViewPhoto
             )
         }
@@ -231,10 +232,10 @@ private fun ReportInfoCard(
                 value = DateUtils.formatTimestamp(reporte.timestampCompletado)
             )
 
-            // Operario
+            // Operador
             InfoRow(
                 icon = Icons.Default.Person,
-                label = "Operario",
+                label = "Operador",
                 value = usuario?.nombreCompleto ?: "Usuario ID: ${reporte.usuarioId}"
             )
 
@@ -336,8 +337,15 @@ private fun ReportStatsCard(respuestas: List<RespuestaReporte>) {
 private fun RespuestaDetailCard(
     respuesta: RespuestaReporte,
     fotos: List<String>,
+    plantilla: PlantillaChecklist?,
     onViewPhoto: (List<String>, Int) -> Unit
 ) {
+    // Buscar el texto de la pregunta en la plantilla
+    val textoPregunta = plantilla?.categorias
+        ?.flatMap { it.preguntas }
+        ?.find { it.id == respuesta.preguntaId }
+        ?.texto ?: "Pregunta no encontrada"
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -356,11 +364,19 @@ private fun RespuestaDetailCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Text(
-                    text = "Pregunta ID: ${respuesta.preguntaId}",
-                    style = MaterialTheme.typography.titleMedium,
+                Column(
                     modifier = Modifier.weight(1f)
-                )
+                ) {
+                    // MOSTRAR EL TEXTO DE LA PREGUNTA COMO TÍTULO PRINCIPAL
+                    Text(
+                        text = textoPregunta,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
 
                 AssistChip(
                     onClick = { },

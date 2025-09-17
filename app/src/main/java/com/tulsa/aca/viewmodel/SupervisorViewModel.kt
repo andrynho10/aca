@@ -21,7 +21,7 @@ import java.util.Locale
 
 data class FiltrosReporte(
     val activoSeleccionado: Activo? = null,
-    val operarioSeleccionado: Usuario? = null,
+    val operadorSeleccionado: Usuario? = null,
     val fechaDesde: String? = null,
     val fechaHasta: String? = null,
     val soloConProblemas: Boolean = false
@@ -45,7 +45,7 @@ data class ReporteCompleto(
 data class SupervisorUiState(
     val reportes: List<ReporteCompleto> = emptyList(),
     val activos: List<Activo> = emptyList(),
-    val operarios: List<Usuario> = emptyList(),
+    val operadores: List<Usuario> = emptyList(),
     val estadisticas: EstadisticasSupervisor = EstadisticasSupervisor(),
     val filtros: FiltrosReporte = FiltrosReporte(),
     val isLoading: Boolean = false,
@@ -67,11 +67,11 @@ class SupervisorViewModel : ViewModel() {
     private var datosYaCargados = false
     private var ultimaCargaExitosa = false
     private var ultimaActualizacion = 0L
-    private val CACHE_EXPIRY = 3 * 60 * 1000L // 3 minutos
+    private val cacheExpiry = 3 * 60 * 1000L // 3 minutos
 
     fun cargarDatosSupervisor(forzarRecarga: Boolean = false) {
         val ahora = System.currentTimeMillis()
-        val cacheExpirado = (ahora - ultimaActualizacion) > CACHE_EXPIRY
+        val cacheExpirado = (ahora - ultimaActualizacion) > cacheExpiry
 
         // Usar caché si está fresco y no se fuerza recarga
         if (!forzarRecarga &&
@@ -103,9 +103,9 @@ class SupervisorViewModel : ViewModel() {
                 // Cargar activos
                 val activos = activoRepository.obtenerTodosLosActivos()
 
-                // Cargar operarios
+                // Cargar operadores
                 val usuarios = usuarioRepository.obtenerTodosLosUsuarios()
-                val operarios = usuarios.filter { it.rol == "OPERARIO" }
+                val operadores = usuarios.filter { it.rol == "OPERADOR" }
 
                 // Cargar todos los reportes CON INFORMACIÓN COMPLETA
                 val reportesTotales = mutableListOf<ReporteCompleto>()
@@ -140,7 +140,7 @@ class SupervisorViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     reportes = todosLosReportes,
                     activos = activos,
-                    operarios = operarios,
+                    operadores = operadores,
                     estadisticas = estadisticas,
                     isLoading = false
                 )
@@ -198,9 +198,9 @@ class SupervisorViewModel : ViewModel() {
                 return@filter false
             }
 
-            // Filtro por operario
-            if (filtros.operarioSeleccionado != null &&
-                reporte.usuarioId != filtros.operarioSeleccionado.id) {
+            // Filtro por operador
+            if (filtros.operadorSeleccionado != null &&
+                reporte.usuarioId != filtros.operadorSeleccionado.id) {
                 return@filter false
             }
 
