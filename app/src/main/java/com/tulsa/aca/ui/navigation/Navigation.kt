@@ -1,6 +1,7 @@
 package com.tulsa.aca.ui.navigation
 
 sealed class Screen(val route: String) {
+    object Login : Screen("login")
     object Home : Screen("home")
     object AssetList : Screen("asset_list")
     object QRScanner : Screen("qr_scanner")

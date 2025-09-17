@@ -22,7 +22,12 @@ data class Usuario(
     val id: String,
     @SerialName("nombre_completo")
     val nombreCompleto: String,
-    val rol: String // "OPERARIO" o "SUPERVISOR"
+    val rol: String,
+    @SerialName("created_at")
+    val createdAt: String? = null,
+
+    // Campos de auth.users que obtendremos por JOIN
+    val email: String? = null
 )
 
 // --- Modelos para las Plantillas de Checklists ---

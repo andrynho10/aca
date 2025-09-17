@@ -25,6 +25,7 @@ import com.tulsa.aca.ui.screens.AssetListScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.LoginScreen
 import com.tulsa.aca.ui.screens.PhotoViewerScreen
 import com.tulsa.aca.ui.screens.PlantillaEditorScreen
 import com.tulsa.aca.ui.screens.PlantillasCrudScreen
@@ -54,9 +55,20 @@ fun ACAApp(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = Screen.Login.route,
         modifier = modifier
     ) {
+        // Ruta de login
+        composable(Screen.Login.route) {
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Pantalla principal
         composable(Screen.Home.route) {
             HomeScreen(
@@ -68,6 +80,14 @@ fun ACAApp(
                 },
                 onNavigateToSupervisorPanel = {
                     navController.navigate(Screen.SupervisorPanel.route)
+                },
+                onLogout = {
+                    android.util.Log.d("MainActivity", "Haciendo logout...")
+                    UserSession.logout()
+
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true } // Limpiar todo el back stack
+                    }
                 }
             )
         }

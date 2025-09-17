@@ -3,23 +3,30 @@ package com.tulsa.aca.data.session
 import com.tulsa.aca.data.models.Usuario
 
 object UserSession {
-    // Usuario hardcodeado temporal - se cambia cuando se implemente auth real
-    private val currentUser = Usuario(
-        id = "e5d351ff-f07a-49c3-87d8-185c58706c75",
-        nombreCompleto = "Juan Pérez", // Nombre temporal
-        rol = "SUPERVISOR" // Cambiar a "SUPERVISOR" para probar vista de supervisor
-    )
+    private var currentUser: Usuario? = null
 
-    fun getCurrentUser(): Usuario = currentUser
+    fun login(usuario: Usuario) {
+        currentUser = usuario
+        android.util.Log.d("UserSession", "Usuario logueado: ${usuario.nombreCompleto}")
+    }
 
-    fun isOperario(): Boolean = currentUser.rol == "OPERARIO"
+    fun logout() {
+        android.util.Log.d("UserSession", "Cerrando sesión de: ${currentUser?.nombreCompleto}")
+        currentUser = null
+    }
 
-    fun isSupervisor(): Boolean = currentUser.rol == "SUPERVISOR"
+    fun getCurrentUser(): Usuario {
+        return currentUser ?: Usuario(
+            id = "operario-test-001",
+            nombreCompleto = "Usuario de Prueba",
+            email = "test@test.com",
+            rol = "OPERARIO"
+        )
+    }
 
-    // Función temporal para cambiar rol (solo para testing)
-    fun setUserRole(role: String) {
-        // En producción, esto vendrá de la autenticación real
-        // Por ahora queda comentado para evitar cambios accidentales
-        // currentUser = currentUser.copy(rol = role)
+    fun isLoggedIn(): Boolean {
+        val loggedIn = currentUser != null
+        android.util.Log.d("UserSession", "¿Usuario logueado? $loggedIn")
+        return loggedIn
     }
 }
