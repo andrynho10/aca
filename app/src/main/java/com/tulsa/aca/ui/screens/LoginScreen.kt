@@ -2,6 +2,7 @@ package com.tulsa.aca.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -12,9 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -36,6 +41,18 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    // FocusRequesters para manejar el foco
+    val passwordFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Función para ejecutar el login
+    val performLogin = {
+        if (email.isNotBlank() && password.isNotBlank() && !uiState.isLoading) {
+            keyboardController?.hide() // Ocultar teclado al hacer login
+            viewModel.login(email, password)
+        }
+    }
 
     // Mostrar error si existe
     LaunchedEffect(uiState.error) {
@@ -99,11 +116,19 @@ fun LoginScreen(
                         Icon(Icons.Default.Email, "Email")
                     },
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next // CLAVE: Botón "Next" en el teclado
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { // CLAVE: Cuando presiona Enter/Next
+                            passwordFocusRequester.requestFocus() // Mover foco a password
+                        }
                     ),
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
+                    enabled = !uiState.isLoading,
+                    singleLine = true // IMPORTANTE: Una sola línea
                 )
+
 
                 // Campo password
                 OutlinedTextField(
@@ -126,11 +151,38 @@ fun LoginScreen(
                     else
                         PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done // CLAVE: Botón "Hecho" en el teclado
                     ),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
+                    keyboardActions = KeyboardActions(
+                        onDone = { // CLAVE: Cuando se presiona Enter/Done
+                            performLogin() // Ejecutar login
+                        }
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(passwordFocusRequester), // CLAVE: FocusRequester
+                    enabled = !uiState.isLoading,
+                    singleLine = true // IMPORTANTE: Una sola línea
                 )
+
+                // Checkbox "Recordar usuario"
+                var rememberUser by remember { mutableStateOf(false) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = rememberUser,
+                        onCheckedChange = { rememberUser = it },
+                        enabled = !uiState.isLoading
+                    )
+                    Text(
+                        text = "Recordar usuario",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
 
                 // Botón login
                 Button(

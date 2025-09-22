@@ -74,7 +74,7 @@ fun HomeScreen(
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer // CORREGIR COLOR
+                        containerColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
 
