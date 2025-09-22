@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,17 +41,84 @@ fun ChecklistScreen(
     val respuestas by viewModel.respuestas.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
+    val saveSuccess by viewModel.saveSuccess.collectAsState()
+    val saveError by viewModel.saveError.collectAsState()
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
     }
+    // MANEJAR ESTADO DE ÉXITO
+    LaunchedEffect(saveSuccess) {
+        if (saveSuccess) {
+            showSuccessDialog = true
+        }
+    }
+
+    // MANEJAR ERRORES
+    LaunchedEffect(saveError) {
+        saveError?.let { error ->
+            errorMessage = error
+        }
+    }
+
     LaunchedEffect(Unit) {
         android.util.Log.d("ChecklistScreen", UserSession.debugCurrentUserStatus())
     }
     // Cargar plantilla completa al inicio
     LaunchedEffect(templateId) {
         viewModel.cargarPlantillaCompleta(templateId)
+    }
+
+    if (showSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Éxito",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("¡Checklist Completado!")
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "La inspección ha sido guardada exitosamente.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "• Todas las respuestas han sido registradas\n" +
+                                "• Las fotos han sido subidas correctamente\n" +
+                                "• El reporte está disponible para supervisores",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSuccessDialog = false
+                        viewModel.clearSaveStates()
+                        onChecklistCompleted()
+                    }
+                ) {
+                    Text("Continuar")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurface
+        )
     }
 
     Column(
@@ -124,13 +193,20 @@ fun ChecklistScreen(
                     {
                         // Mostrar error si existe
                         errorMessage?.let { error ->
-                            Text(
-                                text = error,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = error,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
                         Button(
                             onClick = {
@@ -138,44 +214,63 @@ fun ChecklistScreen(
                                     val currentUser = UserSession.requireCurrentUser()
                                     android.util.Log.d("ChecklistScreen", "Guardando checklist para usuario: ${currentUser.nombreCompleto} (${currentUser.id})")
 
+                                    errorMessage = null // Limpiar errores previos
+
                                     viewModel.guardarChecklist(
                                         assetId = assetId,
                                         userId = currentUser.id,
                                         templateId = templateId,
                                         context = context,
-                                        onSuccess = onChecklistCompleted,
+                                        onSuccess = { /* Se maneja con LaunchedEffect */ },
                                         onError = { error ->
                                             errorMessage = error
                                         }
                                     )
                                 } catch (e: IllegalStateException) {
-                                    // Si llega aquí, hay un bug - el usuario no está logueado
                                     android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
                                     errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
                                 }
                             },
                             enabled = todasRespondidas && !isSaving,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            if (isSaving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Completar"
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-                            Text(
-                                text = if (isSaving) "Guardando..."
-                                else "Completar Checklist"
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (todasRespondidas)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
                             )
+                        ) {
+                            when {
+                                isSaving -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Guardando inspección...")
+                                }
+
+                                !todasRespondidas -> {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = "Incompleto",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Completar todas las preguntas")
+                                }
+
+                                else -> {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Completar",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Completar Checklist")
+                                }
+                            }
                         }
                     }
                 }
@@ -218,7 +313,7 @@ private fun CategorySection(
                         onComentarioChanged(pregunta.id, comentario)
                     },
                     onFotosChanged = { fotos ->
-                        onFotosChanged(pregunta.id, fotos) // Nueva función
+                        onFotosChanged(pregunta.id, fotos)
                     }
                 )
 

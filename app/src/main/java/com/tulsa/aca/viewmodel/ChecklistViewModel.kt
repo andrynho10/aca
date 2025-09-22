@@ -37,6 +37,12 @@ class ChecklistViewModel : ViewModel() {
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
+    private val _saveSuccess = MutableStateFlow(false)
+    val saveSuccess: StateFlow<Boolean> = _saveSuccess.asStateFlow()
+
+    private val _saveError = MutableStateFlow<String?>(null)
+    val saveError: StateFlow<String?> = _saveError.asStateFlow()
+
     fun cargarPlantillaCompleta(templateId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -96,6 +102,11 @@ class ChecklistViewModel : ViewModel() {
         }
     }
 
+    // FUNCIÓN PARA LIMPIAR ESTADOS
+    fun clearSaveStates() {
+        _saveSuccess.value = false
+        _saveError.value = null
+    }
 
     fun guardarChecklist(
         assetId: Int,
@@ -107,6 +118,8 @@ class ChecklistViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             _isSaving.value = true
+            _saveError.value = null
+            _saveSuccess.value = false
             try {
                 // LOG: Ver qué respuestas tenemos
                 android.util.Log.d("ChecklistVM", "=== INICIANDO GUARDADO ===")
@@ -150,16 +163,17 @@ class ChecklistViewModel : ViewModel() {
                     // Log de cuántas fotos se intentaron guardar
                     val totalFotos = respuestasConFotos.sumOf { it.fotos.size }
                     android.util.Log.d("ChecklistVM", "Total de fotos guardadas: $totalFotos")
-
+                    _saveSuccess.value = true
+                    _isSaving.value = false
+                    kotlinx.coroutines.delay(1500) // 1.5 segundos
                     onSuccess()
                 } else {
                     onError("Error al guardar el checklist")
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ChecklistApp", "ERROR AL GUARDAR: ${e.message}", e)
-                onError("Error: ${e.message}")
-            } finally {
                 _isSaving.value = false
+                _saveError.value = "Error al guardar: ${e.message}"
+                onError("Error al guardar: ${e.message}")
             }
         }
     }

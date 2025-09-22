@@ -50,7 +50,7 @@ object UserSession {
     }
     fun verificarEstadoAutenticacion(): String {
         val supabaseUser = SupabaseClient.client.auth.currentUserOrNull()
-        val sessionUser = UserSession.getCurrentUser()
+        val sessionUser = getCurrentUser()
 
         return buildString {
             appendLine("=== ESTADO DE AUTENTICACIÓN ===")
