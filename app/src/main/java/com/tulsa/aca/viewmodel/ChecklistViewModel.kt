@@ -108,6 +108,9 @@ class ChecklistViewModel : ViewModel() {
         viewModelScope.launch {
             _isSaving.value = true
             try {
+                // LOG: Ver qué respuestas tenemos
+                android.util.Log.d("ChecklistVM", "=== INICIANDO GUARDADO ===")
+                android.util.Log.d("ChecklistVM", "Total respuestas: ${_respuestas.value.size}")
                 // Preparar respuestas con fotos
                 val respuestasConFotos = _respuestas.value.values.mapNotNull { respuesta ->
                     respuesta.respuesta?.let { resp ->
@@ -123,6 +126,14 @@ class ChecklistViewModel : ViewModel() {
                     }
                 }
 
+                android.util.Log.d("ChecklistVM", "Respuestas con fotos preparadas: ${respuestasConFotos.size}")
+                respuestasConFotos.forEach { rcf ->
+                    android.util.Log.d(
+                        "ChecklistVM",
+                        "  - Pregunta ${rcf.respuesta.preguntaId} tiene ${rcf.fotos.size} fotos"
+                    )
+                }
+
                 val success = reporteRepository.crearReporteConFotos(
                     context = context,
                     activoId = assetId,
@@ -130,6 +141,9 @@ class ChecklistViewModel : ViewModel() {
                     plantillaId = templateId,
                     respuestasConFotos = respuestasConFotos
                 )
+
+                android.util.Log.d("ChecklistVM", "Resultado guardado: $success")
+
 
                 if (success) {
                     android.util.Log.d("ChecklistVM", "Checklist guardado exitosamente")

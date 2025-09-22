@@ -29,9 +29,18 @@ fun HomeScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Obtener el usuario actual
+    // OBTENER EL USUARIO PRIMERO
     val currentUser = UserSession.getCurrentUser()
-    val isOperador = currentUser.rol == "OPERADOR"
+
+    // VERIFICAR SI HAY USUARIO LOGUEADO
+    if (currentUser == null) {
+        LaunchedEffect(Unit) {
+            android.util.Log.e("HomeScreen", "No hay usuario logueado en HomeScreen - haciendo logout automático")
+            onLogout()
+        }
+        return // No renderizar nada si no hay usuario
+    }
+
     val isSupervisor = currentUser.rol == "SUPERVISOR"
 
     // LOG PARA DEBUG
@@ -65,7 +74,7 @@ fun HomeScreen(
                         )
                     },
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = MaterialTheme.colorScheme.primaryContainer // CORREGIR COLOR
                     )
                 )
 
@@ -97,6 +106,7 @@ fun HomeScreen(
                     .offset(x = (-6).dp, y = (-20).dp),
                 contentScale = ContentScale.Fit
             )
+
             // Saludo personalizado
             Text(
                 text = "Bienvenido/a",

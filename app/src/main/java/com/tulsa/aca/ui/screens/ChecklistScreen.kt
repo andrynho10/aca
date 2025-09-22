@@ -44,7 +44,9 @@ fun ChecklistScreen(
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
     }
-
+    LaunchedEffect(Unit) {
+        android.util.Log.d("ChecklistScreen", UserSession.debugCurrentUserStatus())
+    }
     // Cargar plantilla completa al inicio
     LaunchedEffect(templateId) {
         viewModel.cargarPlantillaCompleta(templateId)
@@ -132,16 +134,25 @@ fun ChecklistScreen(
                         }
                         Button(
                             onClick = {
-                                viewModel.guardarChecklist(
-                                    assetId = assetId,
-                                    userId = UserSession.getCurrentUser().id,
-                                    templateId = templateId,
-                                    context = context,
-                                    onSuccess = onChecklistCompleted,
-                                    onError = { error ->
-                                        errorMessage = error
-                                    }
-                                )
+                                try {
+                                    val currentUser = UserSession.requireCurrentUser()
+                                    android.util.Log.d("ChecklistScreen", "Guardando checklist para usuario: ${currentUser.nombreCompleto} (${currentUser.id})")
+
+                                    viewModel.guardarChecklist(
+                                        assetId = assetId,
+                                        userId = currentUser.id,
+                                        templateId = templateId,
+                                        context = context,
+                                        onSuccess = onChecklistCompleted,
+                                        onError = { error ->
+                                            errorMessage = error
+                                        }
+                                    )
+                                } catch (e: IllegalStateException) {
+                                    // Si llega aquí, hay un bug - el usuario no está logueado
+                                    android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
+                                    errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
+                                }
                             },
                             enabled = todasRespondidas && !isSaving,
                             modifier = Modifier
