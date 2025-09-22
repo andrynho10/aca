@@ -10,6 +10,7 @@ import com.tulsa.aca.data.repository.ActivoRepository
 import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteRepository
 import com.tulsa.aca.data.repository.UsuarioRepository
+import com.tulsa.aca.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +23,8 @@ import java.util.Locale
 data class FiltrosReporte(
     val activoSeleccionado: Activo? = null,
     val operadorSeleccionado: Usuario? = null,
-    val fechaDesde: String? = null,
-    val fechaHasta: String? = null,
+    val fechaDesde: Date? = null,
+    val fechaHasta: Date? = null,
     val soloConProblemas: Boolean = false
 )
 
@@ -273,7 +274,7 @@ class SupervisorViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    // ACTUALIZAR FUNCIÓN DE FILTROS
+    // FUNCIÓN DE FILTROS
     private fun filtrarReportes(
         reportes: List<ReporteCompleto>,
         filtros: FiltrosReporte
@@ -293,13 +294,52 @@ class SupervisorViewModel : ViewModel() {
                 return@filter false
             }
 
-            // 🟢 FILTRO "SOLO CON PROBLEMAS"
+            // Filtro "Solo con problemas"
             if (filtros.soloConProblemas && !reporteCompleto.tieneProblemas) {
                 return@filter false
             }
 
             // Filtros de fecha (implementación básica)
-            // TODO: Implementar filtros de fecha si es necesario
+            reporte.timestampCompletado?.let { timestampStr ->
+                try {
+                    // Parsear la fecha del reporte
+                    val reporteDate = DateUtils.parseTimestamp(timestampStr)
+
+                    // Filtro fecha desde
+                    filtros.fechaDesde?.let { fechaDesde ->
+                        val fechaDesdeStartOfDay = Calendar.getInstance().apply {
+                            time = fechaDesde
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.time
+
+                        if (reporteDate.before(fechaDesdeStartOfDay)) {
+                            return@filter false
+                        }
+                    }
+
+                    // Filtro fecha hasta
+                    filtros.fechaHasta?.let { fechaHasta ->
+                        val fechaHastaEndOfDay = Calendar.getInstance().apply {
+                            time = fechaHasta
+                            set(Calendar.HOUR_OF_DAY, 23)
+                            set(Calendar.MINUTE, 59)
+                            set(Calendar.SECOND, 59)
+                            set(Calendar.MILLISECOND, 999)
+                        }.time
+
+                        if (reporteDate.after(fechaHastaEndOfDay)) {
+                            return@filter false
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    android.util.Log.e("SupervisorVM", "Error parseando fecha: ${e.message}")
+                    // Si hay error parseando, incluir el reporte (no filtrar por fecha)
+                }
+            }
 
             true
         }

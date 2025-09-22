@@ -2,6 +2,7 @@ package com.tulsa.aca.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -29,6 +30,7 @@ import com.tulsa.aca.viewmodel.FiltrosReporte
 import com.tulsa.aca.viewmodel.ReporteCompleto
 import com.tulsa.aca.viewmodel.SupervisorViewModel
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -459,6 +461,11 @@ private fun FiltrosCard(
 ) {
     var activoExpandido by remember { mutableStateOf(false) }
     var operadorExpandido by remember { mutableStateOf(false) }
+    var quickFilterExpandido by remember { mutableStateOf(false) }
+
+    // ESTADOS PARA DATE PICKERS
+    var showDatePickerDesde by remember { mutableStateOf(false) }
+    var showDatePickerHasta by remember { mutableStateOf(false) }
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -477,11 +484,178 @@ private fun FiltrosCard(
                     color = MaterialTheme.colorScheme.primary
                 )
                 TextButton(onClick = onClearFilters) {
-                    Text("Limpiar")
+                    Text("Limpiar todo")
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+
+            // FILTROS RÁPIDOS POR FECHA
+            Text(
+                text = "Período de tiempo",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    FilterChip(
+                        selected = esSameDay(filtrosActuales.fechaDesde, DateUtils.getToday()) &&
+                                esSameDay(filtrosActuales.fechaHasta, DateUtils.getToday()),
+                        onClick = {
+                            val hoy = DateUtils.getToday()
+                            onFiltersChanged(filtrosActuales.copy(
+                                fechaDesde = hoy,
+                                fechaHasta = hoy
+                            ))
+                        },
+                        label = { Text("Hoy") }
+                    )
+                }
+
+                item {
+                    FilterChip(
+                        selected = esSameDay(filtrosActuales.fechaDesde, DateUtils.getYesterday()) &&
+                                esSameDay(filtrosActuales.fechaHasta, DateUtils.getYesterday()),
+                        onClick = {
+                            val ayer = DateUtils.getYesterday()
+                            onFiltersChanged(filtrosActuales.copy(
+                                fechaDesde = ayer,
+                                fechaHasta = ayer
+                            ))
+                        },
+                        label = { Text("Ayer") }
+                    )
+                }
+
+                item {
+                    FilterChip(
+                        selected = esSameDay(filtrosActuales.fechaDesde, DateUtils.getStartOfWeek()) &&
+                                esSameDay(filtrosActuales.fechaHasta, DateUtils.getToday()),
+                        onClick = {
+                            onFiltersChanged(filtrosActuales.copy(
+                                fechaDesde = DateUtils.getStartOfWeek(),
+                                fechaHasta = DateUtils.getToday()
+                            ))
+                        },
+                        label = { Text("Esta Semana") }
+                    )
+                }
+
+                item {
+                    FilterChip(
+                        selected = esSameDay(filtrosActuales.fechaDesde, DateUtils.getDaysAgo(7)) &&
+                                esSameDay(filtrosActuales.fechaHasta, DateUtils.getToday()),
+                        onClick = {
+                            onFiltersChanged(filtrosActuales.copy(
+                                fechaDesde = DateUtils.getDaysAgo(7),
+                                fechaHasta = DateUtils.getToday()
+                            ))
+                        },
+                        label = { Text("Últimos 7 días") }
+                    )
+                }
+
+                item {
+                    FilterChip(
+                        selected = esSameDay(filtrosActuales.fechaDesde, DateUtils.getStartOfMonth()) &&
+                                esSameDay(filtrosActuales.fechaHasta, DateUtils.getToday()),
+                        onClick = {
+                            onFiltersChanged(filtrosActuales.copy(
+                                fechaDesde = DateUtils.getStartOfMonth(),
+                                fechaHasta = DateUtils.getToday()
+                            ))
+                        },
+                        label = { Text("Este Mes") }
+                    )
+                }
+
+                item {
+                    FilterChip(
+                        selected = esSameDay(filtrosActuales.fechaDesde, DateUtils.getDaysAgo(30)) &&
+                                esSameDay(filtrosActuales.fechaHasta, DateUtils.getToday()),
+                        onClick = {
+                            onFiltersChanged(filtrosActuales.copy(
+                                fechaDesde = DateUtils.getDaysAgo(30),
+                                fechaHasta = DateUtils.getToday()
+                            ))
+                        },
+                        label = { Text("Últimos 30 días") }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // SELECTORES DE FECHA PERSONALIZADOS
+            Text(
+                text = "Fechas personalizadas",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Fecha Desde
+                OutlinedTextField(
+                    value = filtrosActuales.fechaDesde?.let { DateUtils.formatDateOnly(it) } ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Desde") },
+                    placeholder = { Text("dd/mm/aaaa") },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePickerDesde = true }) {
+                            Icon(Icons.Default.DateRange, "Seleccionar fecha")
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Fecha Hasta
+                OutlinedTextField(
+                    value = filtrosActuales.fechaHasta?.let { DateUtils.formatDateOnly(it) } ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Hasta") },
+                    placeholder = { Text("dd/mm/aaaa") },
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePickerHasta = true }) {
+                            Icon(Icons.Default.DateRange, "Seleccionar fecha")
+                        }
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Botón para limpiar fechas
+            if (filtrosActuales.fechaDesde != null || filtrosActuales.fechaHasta != null) {
+                TextButton(
+                    onClick = {
+                        onFiltersChanged(filtrosActuales.copy(
+                            fechaDesde = null,
+                            fechaHasta = null
+                        ))
+                    },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Limpiar fechas",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Limpiar fechas")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Checkbox "Solo con problemas"
             Row(
@@ -503,7 +677,7 @@ private fun FiltrosCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filtro por activo (igual que antes)
+            // Filtro por activo
             ExposedDropdownMenuBox(
                 expanded = activoExpandido,
                 onExpandedChange = { activoExpandido = !activoExpandido }
@@ -588,6 +762,67 @@ private fun FiltrosCard(
             }
         }
     }
+    // DATE PICKERS
+    if (showDatePickerDesde) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerDesde = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val selectedDate = Date(millis)
+                        onFiltersChanged(filtrosActuales.copy(fechaDesde = selectedDate))
+                    }
+                    showDatePickerDesde = false
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerDesde = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showDatePickerHasta) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerHasta = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val selectedDate = Date(millis)
+                        onFiltersChanged(filtrosActuales.copy(fechaHasta = selectedDate))
+                    }
+                    showDatePickerHasta = false
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerHasta = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+// FUNCIÓN AUXILIAR para comparar fechas por día
+private fun esSameDay(date1: Date?, date2: Date?): Boolean {
+    if (date1 == null || date2 == null) return false
+
+    val cal1 = Calendar.getInstance().apply { time = date1 }
+    val cal2 = Calendar.getInstance().apply { time = date2 }
+
+    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
+            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
 }
 
 @Composable
