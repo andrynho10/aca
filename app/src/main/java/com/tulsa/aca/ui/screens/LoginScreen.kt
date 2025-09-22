@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.R
+import com.tulsa.aca.utils.PreferencesManager
 import com.tulsa.aca.viewmodel.LoginViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,45 +40,63 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var rememberUser by remember { mutableStateOf(false) } // 🔄 MOVIDO AQUÍ
 
     // FocusRequesters para manejar el foco
     val passwordFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    // CARGAR PREFERENCIAS AL INICIAR
+    LaunchedEffect(Unit) {
+        val shouldRemember = PreferencesManager.shouldRememberUser(context)
+        if (shouldRemember) {
+            val savedEmail = PreferencesManager.getSavedUserEmail(context)
+            if (savedEmail.isNotEmpty()) {
+                email = savedEmail
+                rememberUser = true
+                android.util.Log.d("LoginScreen", "Email cargado: $savedEmail")
+            }
+        }
+    }
+
     // Función para ejecutar el login
     val performLogin = {
         if (email.isNotBlank() && password.isNotBlank() && !uiState.isLoading) {
-            keyboardController?.hide() // Ocultar teclado al hacer login
+            keyboardController?.hide()
+
+            // GUARDAR/LIMPIAR PREFERENCIAS ANTES DEL LOGIN
+            if (rememberUser) {
+                PreferencesManager.setRememberUser(context, true)
+                PreferencesManager.saveUserEmail(context, email)
+                android.util.Log.d("LoginScreen", "Guardando usuario: $email")
+            } else {
+                PreferencesManager.clearSavedUser(context)
+                android.util.Log.d("LoginScreen", "Limpiando datos guardados")
+            }
+
             viewModel.login(email, password)
         }
     }
 
-    // Mostrar error si existe
+    // Mostrar error con Snackbar
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
             android.util.Log.e("LoginScreen", error)
 
-            // Personalizar mensaje según el tipo de error
             val userFriendlyMessage = when {
                 error.contains("Invalid login credentials", ignoreCase = true) ->
                     "❌ Usuario o contraseña incorrectos"
-
                 error.contains("Email not confirmed", ignoreCase = true) ->
                     "📧 Por favor, confirma tu email"
-
-                error.contains("network", ignoreCase = true) || error.contains(
-                    "connection",
-                    ignoreCase = true
-                ) ->
+                error.contains("network", ignoreCase = true) || error.contains("connection", ignoreCase = true) ->
                     "🌐 Error de conexión. Verifica tu internet"
-
                 error.contains("timeout", ignoreCase = true) ->
                     "⏱️ Tiempo de espera agotado. Intenta nuevamente"
-
                 else -> "⚠️ Error al iniciar sesión. Intenta nuevamente"
             }
 
@@ -111,7 +131,7 @@ fun LoginScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(paddingValues) // 🟢 NUEVO
+                .padding(paddingValues)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -157,18 +177,17 @@ fun LoginScreen(
                         },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Next // CLAVE: Botón "Next" en el teclado
+                            imeAction = ImeAction.Next
                         ),
                         keyboardActions = KeyboardActions(
-                            onNext = { // CLAVE: Cuando presiona Enter/Next
-                                passwordFocusRequester.requestFocus() // Mover foco a password
+                            onNext = {
+                                passwordFocusRequester.requestFocus()
                             }
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isLoading,
-                        singleLine = true // IMPORTANTE: Una sola línea
+                        singleLine = true
                     )
-
 
                     // Campo password
                     OutlinedTextField(
@@ -192,29 +211,31 @@ fun LoginScreen(
                             PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done // CLAVE: Botón "Hecho" en el teclado
+                            imeAction = ImeAction.Done
                         ),
                         keyboardActions = KeyboardActions(
-                            onDone = { // CLAVE: Cuando se presiona Enter/Done
-                                performLogin() // Ejecutar login
+                            onDone = {
+                                performLogin()
                             }
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .focusRequester(passwordFocusRequester), // CLAVE: FocusRequester
+                            .focusRequester(passwordFocusRequester),
                         enabled = !uiState.isLoading,
-                        singleLine = true // IMPORTANTE: Una sola línea
+                        singleLine = true
                     )
 
-                    // Checkbox "Recordar usuario"
-                    var rememberUser by remember { mutableStateOf(false) }
+                    // CHECKBOX "RECORDAR USUARIO"
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Checkbox(
                             checked = rememberUser,
-                            onCheckedChange = { rememberUser = it },
+                            onCheckedChange = { checked ->
+                                rememberUser = checked
+                                android.util.Log.d("LoginScreen", "Checkbox cambiado: $checked")
+                            },
                             enabled = !uiState.isLoading
                         )
                         Text(
@@ -226,9 +247,7 @@ fun LoginScreen(
 
                     // Botón login
                     Button(
-                        onClick = {
-                            viewModel.login(email, password)
-                        },
+                        onClick = performLogin,
                         modifier = Modifier.fillMaxWidth(),
                         enabled = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
                     ) {
