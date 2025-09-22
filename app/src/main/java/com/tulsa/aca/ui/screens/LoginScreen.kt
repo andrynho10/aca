@@ -37,6 +37,7 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -57,8 +58,32 @@ fun LoginScreen(
     // Mostrar error si existe
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
-            // Aquí podrías mostrar un Snackbar o Toast
             android.util.Log.e("LoginScreen", error)
+
+            // Personalizar mensaje según el tipo de error
+            val userFriendlyMessage = when {
+                error.contains("Invalid login credentials", ignoreCase = true) ->
+                    "❌ Usuario o contraseña incorrectos"
+
+                error.contains("Email not confirmed", ignoreCase = true) ->
+                    "📧 Por favor, confirma tu email"
+
+                error.contains("network", ignoreCase = true) || error.contains(
+                    "connection",
+                    ignoreCase = true
+                ) ->
+                    "🌐 Error de conexión. Verifica tu internet"
+
+                error.contains("timeout", ignoreCase = true) ->
+                    "⏱️ Tiempo de espera agotado. Intenta nuevamente"
+
+                else -> "⚠️ Error al iniciar sesión. Intenta nuevamente"
+            }
+
+            snackbarHostState.showSnackbar(
+                message = userFriendlyMessage,
+                duration = SnackbarDuration.Long
+            )
         }
     }
 
@@ -69,148 +94,164 @@ fun LoginScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Logo/Título
-        Image(
-            painter = painterResource(id = R.drawable.logo_empresa),
-            contentDescription = "Logo TULSA",
-            modifier = Modifier
-                .size(225.dp)
-                .offset(x = (-10).dp),
-            contentScale = ContentScale.Fit
-        )
-        Text(
-            text = "Checklist Inspección Grúas Horquilla",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
-
-        // Card de login
-        ElevatedCard(
-            modifier = Modifier.fillMaxWidth()
+    Scaffold(
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                snackbar = { data ->
+                    Snackbar(
+                        snackbarData = data,
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(paddingValues) // 🟢 NUEVO
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            // Logo/Título
+            Image(
+                painter = painterResource(id = R.drawable.logo_empresa),
+                contentDescription = "Logo TULSA",
+                modifier = Modifier
+                    .size(200.dp)
+                    .offset(x = (-10).dp),
+                contentScale = ContentScale.Fit
+            )
+            Text(
+                text = "Checklist Inspección Grúas Horquilla",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
+
+            // Card de login
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Iniciar Sesión",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // Campo email
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
-                    placeholder = { Text("usuario@tulsa.cl") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Email, "Email")
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next // CLAVE: Botón "Next" en el teclado
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { // CLAVE: Cuando presiona Enter/Next
-                            passwordFocusRequester.requestFocus() // Mover foco a password
-                        }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading,
-                    singleLine = true // IMPORTANTE: Una sola línea
-                )
-
-
-                // Campo password
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Lock, "Contraseña")
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(
-                                if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                "Mostrar contraseña"
-                            )
-                        }
-                    },
-                    visualTransformation = if (passwordVisible)
-                        VisualTransformation.None
-                    else
-                        PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done // CLAVE: Botón "Hecho" en el teclado
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { // CLAVE: Cuando se presiona Enter/Done
-                            performLogin() // Ejecutar login
-                        }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(passwordFocusRequester), // CLAVE: FocusRequester
-                    enabled = !uiState.isLoading,
-                    singleLine = true // IMPORTANTE: Una sola línea
-                )
-
-                // Checkbox "Recordar usuario"
-                var rememberUser by remember { mutableStateOf(false) }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Checkbox(
-                        checked = rememberUser,
-                        onCheckedChange = { rememberUser = it },
-                        enabled = !uiState.isLoading
-                    )
                     Text(
-                        text = "Recordar usuario",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp)
+                        text = "Iniciar Sesión",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Campo email
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        placeholder = { Text("usuario@tulsa.cl") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, "Email")
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next // CLAVE: Botón "Next" en el teclado
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { // CLAVE: Cuando presiona Enter/Next
+                                passwordFocusRequester.requestFocus() // Mover foco a password
+                            }
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !uiState.isLoading,
+                        singleLine = true // IMPORTANTE: Una sola línea
+                    )
+
+
+                    // Campo password
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Contraseña") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, "Contraseña")
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    "Mostrar contraseña"
+                                )
+                            }
+                        },
+                        visualTransformation = if (passwordVisible)
+                            VisualTransformation.None
+                        else
+                            PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done // CLAVE: Botón "Hecho" en el teclado
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { // CLAVE: Cuando se presiona Enter/Done
+                                performLogin() // Ejecutar login
+                            }
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(passwordFocusRequester), // CLAVE: FocusRequester
+                        enabled = !uiState.isLoading,
+                        singleLine = true // IMPORTANTE: Una sola línea
+                    )
+
+                    // Checkbox "Recordar usuario"
+                    var rememberUser by remember { mutableStateOf(false) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = rememberUser,
+                            onCheckedChange = { rememberUser = it },
+                            enabled = !uiState.isLoading
+                        )
+                        Text(
+                            text = "Recordar usuario",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+
+                    // Botón login
+                    Button(
+                        onClick = {
+                            viewModel.login(email, password)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("Iniciar Sesión")
+                    }
+
+                    // Usuarios de prueba
+                    Text(
+                        text = "Usuarios de prueba:\n• operador@test.com\n• supervisor@test.com\nContraseña: password123",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 16.dp)
                     )
                 }
-
-                // Botón login
-                Button(
-                    onClick = {
-                        viewModel.login(email, password)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text("Iniciar Sesión")
-                }
-
-                // Usuarios de prueba
-                Text(
-                    text = "Usuarios de prueba:\n• operador@test.com\n• supervisor@test.com\nContraseña: password123",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
             }
         }
     }
