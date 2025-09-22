@@ -106,7 +106,8 @@ fun SupervisorPanelScreen(
                     onViewReportDetails = onViewReportDetails,
                     onNavigateToActivosCrud = onNavigateToActivosCrud,
                     onNavigateToPlantillasCrud = onNavigateToPlantillasCrud,
-                    onRefresh = { supervisorViewModel.forzarRecarga() }
+                    onRefresh = { supervisorViewModel.forzarRecarga() },
+                    onLoadMore = { supervisorViewModel.cargarMasReportes() }
                 )
             }
         }
@@ -172,7 +173,8 @@ private fun SupervisorContent(
     onViewReportDetails: (String) -> Unit,
     onNavigateToActivosCrud: () -> Unit,
     onNavigateToPlantillasCrud: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onLoadMore: () -> Unit
 ) {
     val pullRefreshState = rememberPullRefreshState(
         refreshing = uiState.isLoading,
@@ -277,9 +279,19 @@ private fun SupervisorContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Reportes Recientes (${uiState.reportes.size})",
+                        text = "Reportes Recientes",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
+                    )
+                    // MOSTRAR CONTADOR ACTUALIZADO
+                    Text(
+                        text = if (uiState.totalReportesDisponibles > 0) {
+                            "Mostrando ${uiState.reportesMostrados} de ${uiState.totalReportesDisponibles}"
+                        } else {
+                            "Sin reportes"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -296,6 +308,39 @@ private fun SupervisorContent(
                             reporteCompleto.reporte.id?.let { onViewReportDetails(it) }
                         }
                     )
+                }
+
+                // BOTÓN "CARGAR MÁS" (si hay más reportes disponibles)
+                if (uiState.puedeCargarMas) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            OutlinedButton(
+                                onClick = onLoadMore,
+                                enabled = !uiState.isLoadingMore,
+                                modifier = Modifier.padding(vertical = 16.dp)
+                            ) {
+                                if (uiState.isLoadingMore) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Cargando...")
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.ExpandMore,
+                                        contentDescription = "Cargar más",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Cargar 15 más")
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -438,7 +483,27 @@ private fun FiltrosCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Filtro por activo
+            // Checkbox "Solo con problemas"
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Checkbox(
+                    checked = filtrosActuales.soloConProblemas,
+                    onCheckedChange = { checked ->
+                        onFiltersChanged(filtrosActuales.copy(soloConProblemas = checked))
+                    }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Solo reportes con problemas",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Filtro por activo (igual que antes)
             ExposedDropdownMenuBox(
                 expanded = activoExpandido,
                 onExpandedChange = { activoExpandido = !activoExpandido }
@@ -569,6 +634,7 @@ private fun SupervisorReporteCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // REORGANIZAR HEADER
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -603,27 +669,57 @@ private fun SupervisorReporteCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            // INDICADOR DE PROBLEMAS SEPARADO Y MÁS VISIBLE
+            if (reporteCompleto.tieneProblemas) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                "Con Problemas",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Tiene problemas",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            labelColor = MaterialTheme.colorScheme.onErrorContainer,
+                            leadingIconContentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        modifier = Modifier.height(32.dp) // Altura un poco más generosa
+                    )
+                }
+            }
 
-            // FECHA CORREGIDA
+            Spacer(modifier = Modifier.height(12.dp)) // Más espacio antes de los detalles
+
+            // DETALLES DEL REPORTE
             Text(
                 text = "📅 ${DateUtils.formatTimestamp(reporteCompleto.reporte.timestampCompletado)}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // OPERADORO CON NOMBRE
             Text(
                 text = "👤 ${reporteCompleto.usuario?.nombreCompleto ?: "Usuario ID: ${reporteCompleto.reporte.usuarioId}"}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // ACTIVO CON NOMBRE
             Text(
                 text = "🔧 ${reporteCompleto.activo?.nombre ?: "Activo ID: ${reporteCompleto.reporte.activoId}"}",
                 style = MaterialTheme.typography.bodyMedium
             )
 
-            // PLANTILLA CON NOMBRE
             Text(
                 text = "📋 ${reporteCompleto.plantilla?.nombre ?: "Plantilla ID: ${reporteCompleto.reporte.plantillaId}"}",
                 style = MaterialTheme.typography.bodySmall,

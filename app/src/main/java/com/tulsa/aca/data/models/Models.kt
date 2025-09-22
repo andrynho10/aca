@@ -83,7 +83,7 @@ data class RespuestaReporte(
     val reporteId: String,
     @SerialName("pregunta_id")
     val preguntaId: Int,
-    val respuesta: Boolean, // true = SÍ, false = NO
+    val respuesta: Boolean, // true = SÍ/Bueno, false = NO/Malo
     val comentario: String? = null,
     @SerialName("created_at")
     val createdAt: String? = null

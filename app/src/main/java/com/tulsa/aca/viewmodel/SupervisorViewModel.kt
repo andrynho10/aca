@@ -39,7 +39,8 @@ data class ReporteCompleto(
     val reporte: com.tulsa.aca.data.models.ReporteInspeccion,
     val usuario: Usuario?,
     val activo: Activo?,
-    val plantilla: PlantillaChecklist?
+    val plantilla: PlantillaChecklist?,
+    val tieneProblemas: Boolean = false
 )
 
 data class SupervisorUiState(
@@ -49,7 +50,12 @@ data class SupervisorUiState(
     val estadisticas: EstadisticasSupervisor = EstadisticasSupervisor(),
     val filtros: FiltrosReporte = FiltrosReporte(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    // CAMPOS PARA PAGINACIÓN
+    val reportesMostrados: Int = 15, // Cuántos se están mostrando
+    val totalReportesDisponibles: Int = 0, // Total después de filtros
+    val puedeCargarMas: Boolean = false, // Si hay más para cargar
+    val isLoadingMore: Boolean = false // Loading para "Cargar más"
 )
 
 class SupervisorViewModel : ViewModel() {
@@ -61,7 +67,13 @@ class SupervisorViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(SupervisorUiState())
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
 
+    // CONSTANTES DE PAGINACIÓN
+    companion object {
+        private const val REPORTES_POR_PAGINA = 15
+    }
+
     private var todosLosReportes: List<ReporteCompleto> = emptyList()
+    private var reportesFiltrados: List<ReporteCompleto> = emptyList()
 
     // Caché para evitar recargas innecesarias
     private var datosYaCargados = false
@@ -125,28 +137,44 @@ class SupervisorViewModel : ViewModel() {
                                 reporte = reporte,
                                 usuario = usuario,
                                 activo = activo,
-                                plantilla = plantilla
+                                plantilla = plantilla,
+                                tieneProblemas = false // Se calcula después
                             )
                         )
                     }
                 }
 
-                todosLosReportes = reportesTotales.sortedByDescending {
+                // Ordenar por fecha descendente
+                val reportesOrdenados = reportesTotales.sortedByDescending {
                     it.reporte.timestampCompletado
                 }
 
+                // CALCULAR CUÁLES TIENEN PROBLEMAS
+                val reportesConProblemas = calcularReportesConProblemas(reportesOrdenados)
+
+                todosLosReportes = reportesConProblemas
+                reportesFiltrados = todosLosReportes // Inicialmente sin filtros
+
                 val estadisticas = calcularEstadisticas(todosLosReportes)
 
+                // APLICAR PAGINACIÓN INICIAL (primeros 15)
+                val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
+
                 _uiState.value = _uiState.value.copy(
-                    reportes = todosLosReportes,
+                    reportes = reportesPaginados,
                     activos = activos,
                     operadores = operadores,
                     estadisticas = estadisticas,
+                    totalReportesDisponibles = reportesFiltrados.size,
+                    reportesMostrados = reportesPaginados.size,
+                    puedeCargarMas = reportesFiltrados.size > REPORTES_POR_PAGINA,
                     isLoading = false
                 )
 
                 ultimaActualizacion = ahora
                 ultimaCargaExitosa = true
+
+                android.util.Log.d("SupervisorVM", "Datos cargados: ${reportesTotales.size} reportes totales, ${reportesPaginados.size} mostrados inicialmente")
 
             } catch (e: Exception) {
                 android.util.Log.e("SupervisorVM", "Error cargando datos: ${e.message}", e)
@@ -158,33 +186,94 @@ class SupervisorViewModel : ViewModel() {
         }
     }
 
+    // NUEVA FUNCIÓN PARA CARGAR MÁS REPORTES
+    fun cargarMasReportes() {
+        val estadoActual = _uiState.value
+
+        if (estadoActual.isLoadingMore || !estadoActual.puedeCargarMas) {
+            return // Ya está cargando o no hay más
+        }
+
+        android.util.Log.d("SupervisorVM", "Cargando más reportes...")
+
+        _uiState.value = _uiState.value.copy(isLoadingMore = true)
+
+        viewModelScope.launch {
+            try {
+                val reportesMostradosActual = estadoActual.reportesMostrados
+                val siguientesCantidad = REPORTES_POR_PAGINA
+                val nuevoTotal = reportesMostradosActual + siguientesCantidad
+
+                // Tomar más reportes de los filtrados
+                val reportesAmpliados = reportesFiltrados.take(nuevoTotal)
+
+                _uiState.value = _uiState.value.copy(
+                    reportes = reportesAmpliados,
+                    reportesMostrados = reportesAmpliados.size,
+                    puedeCargarMas = reportesAmpliados.size < reportesFiltrados.size,
+                    isLoadingMore = false
+                )
+
+                android.util.Log.d("SupervisorVM", "Cargados ${reportesAmpliados.size - reportesMostradosActual} reportes adicionales")
+
+            } catch (e: Exception) {
+                android.util.Log.e("SupervisorVM", "Error cargando más reportes: ${e.message}", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoadingMore = false,
+                    error = "Error al cargar más reportes: ${e.message}"
+                )
+            }
+        }
+    }
+
+    // ACTUALIZAR FUNCIÓN DE FILTROS
+    fun aplicarFiltros(filtros: FiltrosReporte) {
+        android.util.Log.d("SupervisorVM", "Aplicando filtros: soloConProblemas=${filtros.soloConProblemas}")
+
+        reportesFiltrados = filtrarReportes(todosLosReportes, filtros)
+
+        // Resetear paginación a los primeros 15
+        val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
+
+        _uiState.value = _uiState.value.copy(
+            reportes = reportesPaginados,
+            filtros = filtros,
+            totalReportesDisponibles = reportesFiltrados.size,
+            reportesMostrados = reportesPaginados.size,
+            puedeCargarMas = reportesFiltrados.size > REPORTES_POR_PAGINA
+        )
+
+        android.util.Log.d("SupervisorVM", "Filtros aplicados: ${reportesFiltrados.size} reportes encontrados, ${reportesPaginados.size} mostrados")
+    }
+
+    fun limpiarFiltros() {
+        reportesFiltrados = todosLosReportes
+        val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
+
+        _uiState.value = _uiState.value.copy(
+            reportes = reportesPaginados,
+            filtros = FiltrosReporte(),
+            totalReportesDisponibles = reportesFiltrados.size,
+            reportesMostrados = reportesPaginados.size,
+            puedeCargarMas = reportesFiltrados.size > REPORTES_POR_PAGINA
+        )
+    }
+
     // Method para pull-to-refresh
     fun forzarRecarga() {
         cargarDatosSupervisor(forzarRecarga = true)
     }
+
     // Invalidar caché cuando llega un nuevo reporte (para uso futuro)
     fun invalidarCachePorNuevoReporte() {
         ultimaActualizacion = 0L // Fuerza expiración inmediata
-    }
-    fun aplicarFiltros(filtros: FiltrosReporte) {
-        val reportesFiltrados = filtrarReportes(todosLosReportes, filtros)
-        _uiState.value = _uiState.value.copy(
-            reportes = reportesFiltrados,
-            filtros = filtros
-        )
-    }
-
-    fun limpiarFiltros() {
-        _uiState.value = _uiState.value.copy(
-            reportes = todosLosReportes,
-            filtros = FiltrosReporte()
-        )
     }
 
     fun limpiarError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    // ACTUALIZAR FUNCIÓN DE FILTROS
     private fun filtrarReportes(
         reportes: List<ReporteCompleto>,
         filtros: FiltrosReporte
@@ -204,13 +293,37 @@ class SupervisorViewModel : ViewModel() {
                 return@filter false
             }
 
-            // Filtros de fecha (implementación básica)
-            // En producción, usar librería java.time
+            // 🟢 FILTRO "SOLO CON PROBLEMAS"
+            if (filtros.soloConProblemas && !reporteCompleto.tieneProblemas) {
+                return@filter false
+            }
 
-            // TODO: Implementar filtro de "solo con problemas"
-            // Requeriría cargar las respuestas de cada reporte
+            // Filtros de fecha (implementación básica)
+            // TODO: Implementar filtros de fecha si es necesario
 
             true
+        }
+    }
+
+    // NUEVA FUNCIÓN PARA CALCULAR REPORTES CON PROBLEMAS
+    private suspend fun calcularReportesConProblemas(reportes: List<ReporteCompleto>): List<ReporteCompleto> {
+        if (reportes.isEmpty()) return reportes
+
+        try {
+            // Obtener IDs de todos los reportes
+            val reporteIds = reportes.mapNotNull { it.reporte.id }
+
+            // UNA SOLA LLAMADA para verificar todos los reportes con problemas
+            val reportesConProblemasMap = reporteRepository.verificarReportesConProblemas(reporteIds)
+
+            // Actualizar cada reporte con su estado de problemas
+            return reportes.map { reporteCompleto ->
+                val tieneProblemas = reportesConProblemasMap[reporteCompleto.reporte.id] ?: false
+                reporteCompleto.copy(tieneProblemas = tieneProblemas)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SupervisorVM", "Error calculando reportes con problemas: ${e.message}", e)
+            return reportes // Devolver sin modificar si hay error
         }
     }
 
@@ -228,14 +341,8 @@ class SupervisorViewModel : ViewModel() {
         var reportesEstaSemana = 0
         val activosSet = mutableSetOf<Int>()
 
-        // Obtener IDs de todos los reportes
-        val reporteIds = reportes.mapNotNull { it.reporte.id }
-
-        // UNA SOLA LLAMADA para verificar todos los reportes con problemas
-        val reportesConProblemasMap = reporteRepository.verificarReportesConProblemas(reporteIds)
-
-        // Contar reportes con problemas
-        val reportesConProblemas = reportesConProblemasMap.values.count { it }
+        // Contar reportes con problemas usando el campo calculado
+        val reportesConProblemas = reportes.count { it.tieneProblemas }
 
         reportes.forEach { reporteCompleto ->
             val reporte = reporteCompleto.reporte
