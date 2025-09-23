@@ -1,6 +1,7 @@
 package com.tulsa.aca.data.session
 
 import com.tulsa.aca.data.models.Usuario
+import com.tulsa.aca.data.repository.AuthRepository
 import com.tulsa.aca.data.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 
@@ -15,6 +16,36 @@ object UserSession {
     fun logout() {
         android.util.Log.d("UserSession", "Cerrando sesión de: ${currentUser?.nombreCompleto}")
         currentUser = null
+    }
+
+    // Logout completo centralizado
+    suspend fun logoutCompleto(): Boolean {
+        return try {
+            android.util.Log.d("UserSession", "=== INICIANDO LOGOUT COMPLETO ===")
+            val usuarioActual = currentUser?.nombreCompleto ?: "Usuario desconocido"
+
+            // 1. Cerrar sesión en Supabase
+            val authRepository = AuthRepository()
+            val result = authRepository.logout()
+
+            if (result.isSuccess) {
+                android.util.Log.d("UserSession", "Sesión de '$usuarioActual' cerrada en Supabase")
+            } else {
+                android.util.Log.w("UserSession", "Error cerrando sesión en Supabase: ${result.exceptionOrNull()?.message}")
+                android.util.Log.w("UserSession", "Continuando con logout local...")
+            }
+
+            // 2. Limpiar sesión local (SIEMPRE ejecutar)
+            logout()
+
+            android.util.Log.d("UserSession", "Logout completo exitoso para '$usuarioActual'")
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("UserSession", "Error crítico en logout completo: ${e.message}", e)
+            // Limpiar sesión local de todas formas por seguridad
+            logout()
+            false // Indicar que hubo error, pero se limpió local
+        }
     }
 
     // Función principal - devuelve null si no hay usuario

@@ -121,7 +121,7 @@ class ReportDetailsViewModel : ViewModel() {
         }
     }
 
-    // Método para forzar recarga (elimina del caché y vuelve a cargar)
+    // Méthod para forzar recarga (elimina del caché y vuelve a cargar)
     fun forzarRecarga(reporteId: String) {
         cacheReportes.remove(reporteId)
         cargarDetallesReporte(reporteId)

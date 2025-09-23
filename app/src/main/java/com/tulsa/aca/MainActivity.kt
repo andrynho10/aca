@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -32,6 +33,7 @@ import com.tulsa.aca.ui.screens.PlantillasCrudScreen
 import com.tulsa.aca.ui.screens.ReportDetailsScreen
 import com.tulsa.aca.ui.screens.SupervisorPanelScreen
 import com.tulsa.aca.ui.theme.ACATheme
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +55,8 @@ fun ACAApp(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController()
 ) {
+    val scope = rememberCoroutineScope()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route,
@@ -82,11 +86,20 @@ fun ACAApp(
                     navController.navigate(Screen.SupervisorPanel.route)
                 },
                 onLogout = {
-                    android.util.Log.d("MainActivity", "Haciendo logout...")
-                    UserSession.logout()
+                    scope.launch {
+                        val logoutExitoso = UserSession.logoutCompleto()
 
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true } // Limpiar todo el back stack
+                        // Navegar independientemente del resultado
+                        // (porque siempre se limpia la sesión local)
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+
+                        if (logoutExitoso) {
+                            android.util.Log.d("MainActivity", "Usuario desconectado exitosamente")
+                        } else {
+                            android.util.Log.w("MainActivity", "Logout completado con advertencias")
+                        }
                     }
                 }
             )
