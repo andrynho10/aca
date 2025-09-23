@@ -205,66 +205,21 @@ private fun HistoryContent(
             }
         }
 
-        // TÍTULO DEL HISTORIAL CON INFO SEGÚN TIPO DE USUARIO
+        // Titulo simple historial
         item {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.History,
-                        contentDescription = "Historial",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Historial de Inspecciones",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
-
-                // MOSTRAR CONTADOR CON INFO DEL LÍMITE
-                if (tipoUsuario == "OPERADOR") {
-                    AssistChip(
-                        onClick = { },
-                        label = {
-                            Text(
-                                text = "${reportes.size} de 5 máx",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Info",
-                                modifier = Modifier.size(14.dp)
-                            )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    )
-                } else {
-                    AssistChip(
-                        onClick = { },
-                        label = {
-                            Text(
-                                text = "${reportes.size} total",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.History,
+                    contentDescription = "Historial",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Historial de Inspecciones",
+                    style = MaterialTheme.typography.titleLarge
+                )
             }
         }
 
@@ -278,36 +233,6 @@ private fun HistoryContent(
                 ReporteCard(
                     reporteConUsuario = reporteConUsuario
                 )
-            }
-
-            // INFORMACIÓN ADICIONAL PARA OPERADORES
-            if (tipoUsuario == "OPERADOR" && reportes.size == 5) {
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = "Información",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Solo se muestran las 5 inspecciones más recientes. Los supervisores pueden ver el historial completo.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
             }
         }
     }
