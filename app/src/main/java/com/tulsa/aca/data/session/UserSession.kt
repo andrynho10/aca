@@ -3,6 +3,7 @@ package com.tulsa.aca.data.session
 import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.repository.AuthRepository
 import com.tulsa.aca.data.supabase.SupabaseClient
+import com.tulsa.aca.utils.CacheManager
 import io.github.jan.supabase.auth.auth
 
 object UserSession {
@@ -35,16 +36,26 @@ object UserSession {
                 android.util.Log.w("UserSession", "Continuando con logout local...")
             }
 
-            // 2. Limpiar sesión local (SIEMPRE ejecutar)
+            // 2. LIMPIAR TODOS LOS CACHÉS ANTES DE LIMPIAR SESIÓN LOCAL
+            android.util.Log.d("UserSession", "🧹 Limpiando cachés para seguridad...")
+            CacheManager.limpiarTodosLosCaches()
+
+            // 3. Limpiar sesión local (DESPUÉS de limpiar cachés)
             logout()
 
             android.util.Log.d("UserSession", "Logout completo exitoso para '$usuarioActual'")
+            android.util.Log.d("UserSession", "Datos de sesión anterior completamente eliminados")
             true
         } catch (e: Exception) {
             android.util.Log.e("UserSession", "Error crítico en logout completo: ${e.message}", e)
-            // Limpiar sesión local de todas formas por seguridad
-            logout()
-            false // Indicar que hubo error, pero se limpió local
+            // LIMPIEZA DE EMERGENCIA
+            try {
+                CacheManager.limpiezaDeEmergencia()
+                logout() // Limpiar sesión local de todas formas
+            } catch (cleanupError: Exception) {
+                android.util.Log.e("UserSession", "Error en limpieza de emergencia: ${cleanupError.message}")
+            }
+            false
         }
     }
 
@@ -73,10 +84,13 @@ object UserSession {
 
     // Función de utilidad para logs
     fun debugCurrentUserStatus(): String {
-        return if (currentUser != null) {
-            "Usuario logueado: ${currentUser!!.nombreCompleto} (ID: ${currentUser!!.id})"
-        } else {
-            "No hay usuario logueado"
+        return buildString {
+            if (currentUser != null) {
+                appendLine("Usuario logueado: ${currentUser!!.nombreCompleto} (ID: ${currentUser!!.id})")
+            } else {
+                appendLine("No hay usuario logueado")
+            }
+            appendLine(CacheManager.obtenerInfoCaches())
         }
     }
     fun verificarEstadoAutenticacion(): String {

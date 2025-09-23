@@ -37,9 +37,18 @@ class ReportDetailsViewModel : ViewModel() {
 
         // Función para limpiar caché si es necesario (ejemplo: al hacer logout)
         fun limpiarCache() {
+            val reportesAntes = cacheReportes.size
+            val activosAntes = cacheActivos.size
+            val plantillasAntes = cachePlantillas.size
+
             cacheReportes.clear()
             cacheActivos.clear()
             cachePlantillas.clear()
+
+            android.util.Log.d("ReportDetailsVM", "Caché limpiado: $reportesAntes reportes, $activosAntes activos, $plantillasAntes plantillas eliminados")
+        }
+        fun obtenerTamanoCache(): String {
+            return "${cacheReportes.size} reportes, ${cacheActivos.size} activos, ${cachePlantillas.size} plantillas"
         }
     }
 
@@ -129,6 +138,6 @@ class ReportDetailsViewModel : ViewModel() {
 
     // Información de debugging del caché
     fun obtenerInfoCache(): String {
-        return "Caché: ${cacheReportes.size} reportes, ${cacheActivos.size} activos, ${cachePlantillas.size} plantillas"
+        return obtenerTamanoCache()
     }
 }

@@ -71,6 +71,44 @@ class SupervisorViewModel : ViewModel() {
     // CONSTANTES DE PAGINACIÓN
     companion object {
         private const val REPORTES_POR_PAGINA = 15
+
+        // REGISTRO DE TODAS LAS INSTANCIAS PARA LIMPIEZA
+        private val instanciasActivas = mutableListOf<SupervisorViewModel>()
+
+        // FUNCIÓN PARA LIMPIAR CACHÉ DE TODAS LAS INSTANCIAS
+        fun limpiarCacheTodasLasInstancias() {
+            android.util.Log.d("SupervisorVM", "Limpiando caché de ${instanciasActivas.size} instancias del SupervisorViewModel")
+
+            instanciasActivas.forEach { instancia ->
+                instancia.limpiarCacheInterno()
+            }
+
+            // Limpiar la lista de instancias también
+            instanciasActivas.clear()
+
+            android.util.Log.d("SupervisorVM", "Caché temporal del Supervisor completamente limpiado")
+        }
+
+        // FUNCIÓN PARA OBTENER INFO DEL CACHÉ
+        fun obtenerInfoCache(): String {
+            return if (instanciasActivas.isEmpty()) {
+                "Sin instancias activas"
+            } else {
+                val totalReportes = instanciasActivas.sumOf { it.todosLosReportes.size }
+                "${instanciasActivas.size} instancias, $totalReportes reportes en caché"
+            }
+        }
+
+        // FUNCIÓN PARA INVALIDAR CACHÉ (útil para casos de emergencia)
+        fun invalidarCacheTemporal() {
+            android.util.Log.d("SupervisorVM", "Invalidando caché temporal de todas las instancias")
+
+            instanciasActivas.forEach { instancia ->
+                instancia.ultimaActualizacion = 0L // Forzar expiración
+                instancia.datosYaCargados = false
+                instancia.ultimaCargaExitosa = false
+            }
+        }
     }
 
     private var todosLosReportes: List<ReporteCompleto> = emptyList()
@@ -272,6 +310,44 @@ class SupervisorViewModel : ViewModel() {
 
     fun limpiarError() {
         _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    // FUNCIÓN PRIVADA PARA LIMPIAR CACHÉ DE ESTA INSTANCIA
+    private fun limpiarCacheInterno() {
+        android.util.Log.d("SupervisorVM", "🗑️ Limpiando caché interno de instancia SupervisorViewModel")
+
+        // Limpiar listas de datos
+        todosLosReportes = emptyList()
+        reportesFiltrados = emptyList()
+
+        // Resetear estados de caché
+        datosYaCargados = false
+        ultimaCargaExitosa = false
+        ultimaActualizacion = 0L
+
+        // Limpiar estado UI
+        _uiState.value = SupervisorUiState()
+
+        android.util.Log.d("SupervisorVM", "✅ Caché interno limpiado - Estado reseteado")
+    }
+
+    // AGREGAR AL INIT PARA REGISTRAR LA INSTANCIA
+    init {
+        instanciasActivas.add(this)
+        android.util.Log.d("SupervisorVM", "➕ Nueva instancia SupervisorViewModel registrada (Total: ${instanciasActivas.size})")
+    }
+
+    // LIMPIAR AL DESTRUIR EL ViewModel
+    override fun onCleared() {
+        super.onCleared()
+        instanciasActivas.remove(this)
+        android.util.Log.d("SupervisorVM", "➖ Instancia SupervisorViewModel eliminada (Restantes: ${instanciasActivas.size})")
+    }
+
+    // FUNCIÓN PÚBLICA PARA OBTENER INFO DE ESTA INSTANCIA
+    fun obtenerInfoCacheInstancia(): String {
+        return "Reportes: ${todosLosReportes.size}, Filtrados: ${reportesFiltrados.size}, " +
+                "Última actualización: ${(System.currentTimeMillis() - ultimaActualizacion) / 1000}s atrás"
     }
 
     // FUNCIÓN DE FILTROS
