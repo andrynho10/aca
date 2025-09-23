@@ -21,12 +21,6 @@ object CacheManager {
             SupervisorViewModel.limpiarCacheTodasLasInstancias()
             android.util.Log.d("CacheManager", "Caché temporal de Supervisor limpiado")
 
-            // 3. Limpiar otros cachés si los hubiera
-            // Ejemplo: PlantillaViewModel.limpiarCache()
-            // Ejemplo: ActivoViewModel.limpiarCache()
-
-            android.util.Log.d("CacheManager", "Todos los cachés limpiados correctamente")
-
         } catch (e: Exception) {
             android.util.Log.e("CacheManager", "Error limpiando cachés: ${e.message}", e)
             // Continuar de todas formas
