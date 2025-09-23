@@ -17,7 +17,7 @@ object CacheManager {
             ReportDetailsViewModel.limpiarCache()
             android.util.Log.d("CacheManager", "Caché de ReportDetails limpiado")
 
-            // 2. Limpiar caché de SupervisorViewModel (si existe)
+            // 2. Limpiar caché de SupervisorViewModel
             SupervisorViewModel.limpiarCacheTodasLasInstancias()
             android.util.Log.d("CacheManager", "Caché temporal de Supervisor limpiado")
 

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.Activo
 import com.tulsa.aca.data.models.ReporteConUsuario
+import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.utils.DateUtils
 import com.tulsa.aca.viewmodel.HistorialViewModel
 import java.text.SimpleDateFormat
@@ -35,6 +36,9 @@ fun AssetHistoryScreen(
     historialViewModel: HistorialViewModel = viewModel()
     ) {
     val uiState by historialViewModel.uiState.collectAsState()
+
+    // DETECTAR TIPO DE USUARIO ACTUAL
+    val tipoUsuario = UserSession.getCurrentUser()?.rol ?: "OPERADOR"
 
     // Cargar datos al inicializar la pantalla
     LaunchedEffect(assetId) {
@@ -54,7 +58,19 @@ fun AssetHistoryScreen(
     ) {
         // Top App Bar
         TopAppBar(
-            title = { Text("Historial del Activo") },
+            title = {
+                Column {
+                    Text("Historial del Activo")
+                    // MOSTRAR LIMITACIÓN PARA OPERADORES
+                    if (tipoUsuario == "OPERADOR") {
+                        Text(
+                            text = "Últimas 5 inspecciones",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
@@ -80,6 +96,7 @@ fun AssetHistoryScreen(
                 HistoryContent(
                     activo = uiState.activo,
                     reportes = uiState.reportes,
+                    tipoUsuario = tipoUsuario,
                     onNewInspection = onNewInspection,
                 )
             }
@@ -140,6 +157,7 @@ private fun ErrorContent(
 private fun HistoryContent(
     activo: Activo?,
     reportes: List<ReporteConUsuario>,
+    tipoUsuario: String,
     onNewInspection: () -> Unit
 ) {
     LazyColumn(
@@ -187,21 +205,66 @@ private fun HistoryContent(
             }
         }
 
-        // Título del historial
+        // TÍTULO DEL HISTORIAL CON INFO SEGÚN TIPO DE USUARIO
         item {
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.History,
-                    contentDescription = "Historial",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Historial de Inspecciones",
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "Historial",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Historial de Inspecciones",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+
+                // MOSTRAR CONTADOR CON INFO DEL LÍMITE
+                if (tipoUsuario == "OPERADOR") {
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = "${reportes.size} de 5 máx",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Info",
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    )
+                } else {
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = "${reportes.size} total",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    )
+                }
             }
         }
 
@@ -215,6 +278,36 @@ private fun HistoryContent(
                 ReporteCard(
                     reporteConUsuario = reporteConUsuario
                 )
+            }
+
+            // INFORMACIÓN ADICIONAL PARA OPERADORES
+            if (tipoUsuario == "OPERADOR" && reportes.size == 5) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Información",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Solo se muestran las 5 inspecciones más recientes. Los supervisores pueden ver el historial completo.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     }

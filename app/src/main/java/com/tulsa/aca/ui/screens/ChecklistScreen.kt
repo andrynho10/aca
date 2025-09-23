@@ -7,17 +7,23 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.CategoriaPlantilla
+import com.tulsa.aca.data.models.PlantillaChecklist
 import com.tulsa.aca.data.models.PreguntaPlantilla
 import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.components.PhotoCaptureComponent
@@ -43,8 +49,10 @@ fun ChecklistScreen(
     val isSaving by viewModel.isSaving.collectAsState()
     val saveSuccess by viewModel.saveSuccess.collectAsState()
     val saveError by viewModel.saveError.collectAsState()
+
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
@@ -69,6 +77,45 @@ fun ChecklistScreen(
     // Cargar plantilla completa al inicio
     LaunchedEffect(templateId) {
         viewModel.cargarPlantillaCompleta(templateId)
+    }
+
+    // FUNCIÓN PARA EJECUTAR EL GUARDADO
+    val ejecutarGuardado = {
+        try {
+            val currentUser = UserSession.requireCurrentUser()
+            android.util.Log.d("ChecklistScreen", "Guardando checklist para usuario: ${currentUser.nombreCompleto} (${currentUser.id})")
+
+            errorMessage = null
+
+            viewModel.guardarChecklist(
+                assetId = assetId,
+                userId = currentUser.id,
+                templateId = templateId,
+                context = context,
+                onSuccess = { /* Se maneja con LaunchedEffect */ },
+                onError = { error ->
+                    errorMessage = error
+                }
+            )
+        } catch (e: IllegalStateException) {
+            android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
+            errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
+        }
+    }
+
+    // DIALOG DE CONFIRMACIÓN
+    if (showConfirmDialog) {
+        ConfirmacionEnvioDialog(
+            plantilla = plantillaCompleta,
+            respuestas = respuestas,
+            onConfirmar = {
+                showConfirmDialog = false
+                ejecutarGuardado()
+            },
+            onCancelar = {
+                showConfirmDialog = false
+            }
+        )
     }
 
     if (showSuccessDialog) {
@@ -189,8 +236,34 @@ fun ChecklistScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
-                    )
-                    {
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            // Indicador de progreso
+                            if (!todasRespondidas) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = "Información",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    val totalPreguntas = plantilla.categorias.sumOf { it.preguntas.size }
+                                    val respondidas = respuestas.values.count { it.respuesta != null }
+                                    Text(
+                                        text = "Progreso: $respondidas de $totalPreguntas preguntas completadas",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+
                         // Mostrar error si existe
                         errorMessage?.let { error ->
                             Card(
@@ -208,67 +281,49 @@ fun ChecklistScreen(
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                         }
-                        Button(
-                            onClick = {
-                                try {
-                                    val currentUser = UserSession.requireCurrentUser()
-                                    android.util.Log.d("ChecklistScreen", "Guardando checklist para usuario: ${currentUser.nombreCompleto} (${currentUser.id})")
-
-                                    errorMessage = null // Limpiar errores previos
-
-                                    viewModel.guardarChecklist(
-                                        assetId = assetId,
-                                        userId = currentUser.id,
-                                        templateId = templateId,
-                                        context = context,
-                                        onSuccess = { /* Se maneja con LaunchedEffect */ },
-                                        onError = { error ->
-                                            errorMessage = error
-                                        }
-                                    )
-                                } catch (e: IllegalStateException) {
-                                    android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
-                                    errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
-                                }
-                            },
-                            enabled = todasRespondidas && !isSaving,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (todasRespondidas)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            when {
-                                isSaving -> {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Guardando inspección...")
-                                }
-
-                                !todasRespondidas -> {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = "Incompleto",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Completar todas las preguntas")
-                                }
-
-                                else -> {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = "Completar",
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Completar Checklist")
+                            Button(
+                                onClick = {
+                                    if (todasRespondidas && !isSaving) {
+                                        showConfirmDialog = true // MOSTRAR CONFIRMACIÓN
+                                    }
+                                },
+                                enabled = todasRespondidas && !isSaving,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (todasRespondidas)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                when {
+                                    isSaving -> {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text("Guardando inspección...")
+                                    }
+                                    !todasRespondidas -> {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Incompleto",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Completar todas las preguntas")
+                                    }
+                                    else -> {
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Completar",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Revisar y Enviar Checklist") // TEXTO ACTUALIZADO
+                                    }
                                 }
                             }
                         }
@@ -411,4 +466,244 @@ private fun QuestionItem(
             )
         }
     }
+}
+
+@Composable
+private fun ConfirmacionEnvioDialog(
+    plantilla: PlantillaChecklist?,
+    respuestas: Map<Int, RespuestaChecklistItem>,
+    onConfirmar: () -> Unit,
+    onCancelar: () -> Unit
+) {
+    // Calcular estadísticas del checklist
+    val totalPreguntas = plantilla?.categorias?.sumOf { it.preguntas.size } ?: 0
+    val respuestasRespondidas = respuestas.values.count { it.respuesta != null }
+    val respuestasBuenas = respuestas.values.count { it.respuesta == true }
+    val respuestasMalas = respuestas.values.count { it.respuesta == false }
+    val conComentarios = respuestas.values.count { it.respuesta == false && it.comentario.isNotBlank() }
+    val conFotos = respuestas.values.count { it.fotos.isNotEmpty() }
+
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = "Revisar",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Revisar Checklist",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+        },
+        text = {
+            LazyColumn {
+                item {
+                    Text(
+                        text = "Por favor, revisa tu inspección antes de enviarla:",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Resumen general
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Resumen de la Inspección",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Total preguntas:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "$respuestasRespondidas/$totalPreguntas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Estado BUENO:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "$respuestasBuenas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Estado MALO:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "$respuestasMalas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            if (conComentarios > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Con comentarios:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "$conComentarios",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+
+                            if (conFotos > 0) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = "Con fotos:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Text(
+                                        text = "$conFotos",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                // Alertas si hay problemas
+                if (respuestasMalas > 0) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Advertencia",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Esta inspección contiene $respuestasMalas problema(s) detectado(s)",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+
+                // Mensaje de confirmación
+                item {
+                    Text(
+                        text = "Al confirmar, esta inspección será:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "• Enviada al sistema de reportes\n" +
+                                "• Visible para los supervisores\n" +
+                                "• Guardada permanentemente\n" +
+                                "• No podrá ser modificada",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "¿Estás seguro de que quieres enviar esta inspección?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmar,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = "Enviar",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Sí, Enviar Checklist")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text("Revisar Más")
+            }
+        }
+    )
 }

@@ -123,7 +123,7 @@ class ReporteRepository {
             false
         }
     }
-
+    // Obtener historia por Activo
     suspend fun obtenerHistorialPorActivo(activoId: Int): List<ReporteInspeccion> {
         return try {
             client.from("reportes_inspeccion").select {
@@ -136,6 +136,29 @@ class ReporteRepository {
             emptyList()
         }
     }
+
+    // Historial Limitado Operadores
+    suspend fun obtenerHistorialLimitadoPorActivo(activoId: Int, limite: Int = 5): List<ReporteInspeccion> {
+        return try {
+            android.util.Log.d("ReporteRepository", "Obteniendo historial limitado para activo $activoId (máximo $limite reportes)")
+
+            val reportes = client.from("reportes_inspeccion").select {
+                filter {
+                    ReporteInspeccion::activoId eq activoId
+                }
+                order(column = "timestamp_completado", order = Order.DESCENDING)
+                limit(limite.toLong()) // 🟢 LIMITAR A LAS N MÁS RECIENTES
+            }.decodeList<ReporteInspeccion>()
+
+            android.util.Log.d("ReporteRepository", "Historial limitado obtenido: ${reportes.size} reportes de máximo $limite")
+            reportes
+
+        } catch (e: Exception) {
+            android.util.Log.e("ReporteRepository", "Error obteniendo historial limitado: ${e.message}", e)
+            emptyList()
+        }
+    }
+
     // Obtener usuario por ID
     suspend fun obtenerUsuarioPorId(usuarioId: String): Usuario? {
         return try {

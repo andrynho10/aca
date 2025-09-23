@@ -33,14 +33,32 @@ class HistorialViewModel : ViewModel() {
                 val activo = activoRepository.obtenerActivoPorId(activoId)
 
                 if (activo != null) {
-                    // Cargar historial de reportes
-                    val reportes = reporteRepository.obtenerHistorialPorActivo(activoId)
+                    // Cargar historial con LÓGICA DIFERENCIADA POR TIPO DE USUARIO
+                    val reportes = when (tipoUsuario) {
+                        "OPERADOR" -> {
+                            // Operadores: solo las 5 más recientes
+                            android.util.Log.d("HistorialVM", "Cargando historial LIMITADO para operador (máximo 5 reportes)")
+                            reporteRepository.obtenerHistorialLimitadoPorActivo(activoId, limite = 5)
+                        }
+                        "SUPERVISOR" -> {
+                            // Supervisores: historial completo
+                            android.util.Log.d("HistorialVM", "Cargando historial COMPLETO para supervisor")
+                            reporteRepository.obtenerHistorialPorActivo(activoId)
+                        }
+                        else -> {
+                            // Por defecto: limitado (para operadores)
+                            android.util.Log.d("HistorialVM", "Tipo de usuario desconocido, usando historial limitado")
+                            reporteRepository.obtenerHistorialLimitadoPorActivo(activoId, limite = 5)
+                        }
+                    }
 
                     // Cargar información de usuarios para cada reporte
                     val reportesConUsuario = reportes.map { reporte ->
                         val usuario = usuarioRepository.obtenerUsuarioPorId(reporte.usuarioId)
                         ReporteConUsuario(reporte, usuario)
                     }
+
+                    android.util.Log.d("HistorialVM", "Historial cargado: ${reportesConUsuario.size} reportes para $tipoUsuario")
 
                     _uiState.value = _uiState.value.copy(
                         activo = activo,
