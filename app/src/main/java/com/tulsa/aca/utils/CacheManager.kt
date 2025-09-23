@@ -1,81 +1,127 @@
 package com.tulsa.aca.utils
 
-import com.tulsa.aca.viewmodel.ReportDetailsViewModel
-import com.tulsa.aca.viewmodel.SupervisorViewModel
+import java.lang.ref.WeakReference
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Gestor centralizado para limpiar todos los cachés de la aplicación
- * Importante para seguridad: evita que datos de un usuario sean visibles para otro
+ * Gestor centralizado para caché thread-safe sin memory leaks
+ * Utiliza WeakReferences para evitar mantener referencias fuertes
  */
 object CacheManager {
 
-    fun limpiarTodosLosCaches() {
-        android.util.Log.d("CacheManager", "🧹 Iniciando limpieza completa de cachés...")
+    // THREAD-SAFE: CopyOnWriteArrayList + WeakReference
+    private val cacheableInstances = CopyOnWriteArrayList<WeakReference<Cacheable>>()
 
-        try {
-            // 1. Limpiar caché de ReportDetailsViewModel
-            ReportDetailsViewModel.limpiarCache()
-            android.util.Log.d("CacheManager", "Caché de ReportDetails limpiado")
-
-            // 2. Limpiar caché de SupervisorViewModel
-            SupervisorViewModel.limpiarCacheTodasLasInstancias()
-            android.util.Log.d("CacheManager", "Caché temporal de Supervisor limpiado")
-
-        } catch (e: Exception) {
-            android.util.Log.e("CacheManager", "Error limpiando cachés: ${e.message}", e)
-            // Continuar de todas formas
-        }
+    /**
+     * Registra un componente cacheable
+     * Se auto-limpia cuando el objeto es recolectado por GC
+     */
+    fun registrar(cacheable: Cacheable) {
+        limpiarReferenciasNulas() // Limpiar antes de agregar
+        cacheableInstances.add(WeakReference(cacheable))
+        android.util.Log.d("CacheManager", "Componente registrado. Total: ${cacheableInstances.size}")
     }
 
-    private fun limpiarCacheSupervisor() {
-        try {
-            // Si SupervisorViewModel tuviera función de limpiar caché, la llamaríamos aquí
-            // SupervisorViewModel.limpiarCache()
-            android.util.Log.d("CacheManager", "Caché de Supervisor limpiado")
-        } catch (e: Exception) {
-            android.util.Log.w("CacheManager", "Error limpiando caché de Supervisor: ${e.message}")
+    /**
+     * Remueve un componente específico del registro
+     */
+    fun desregistrar(cacheable: Cacheable) {
+        cacheableInstances.removeIf { ref ->
+            val instance = ref.get()
+            instance == null || instance == cacheable
         }
     }
 
     /**
-     * Función para obtener información de debugging sobre los cachés
+     * Limpia todos los cachés de componentes activos
      */
-    fun obtenerInfoCaches(): String {
-        return buildString {
-            try {
-                appendLine("=== INFORMACIÓN DE CACHÉS ===")
+    fun limpiarTodosLosCaches() {
+        android.util.Log.d("CacheManager", "Iniciando limpieza completa de cachés...")
 
-                // Info del caché de ReportDetails
-                val infoReportDetails = ReportDetailsViewModel.obtenerTamanoCache()
-                appendLine("ReportDetails: $infoReportDetails")
+        limpiarReferenciasNulas()
 
-                // INFO DEL CACHÉ DE SUPERVISOR
-                val infoSupervisor = SupervisorViewModel.obtenerInfoCache()
-                appendLine("Supervisor: $infoSupervisor")
-
-                appendLine("Estado: Cachés funcionando correctamente")
-            } catch (e: Exception) {
-                appendLine("Error obteniendo info de cachés: ${e.message}")
+        var cacheablesLimpiados = 0
+        cacheableInstances.forEach { weakRef ->
+            weakRef.get()?.let { cacheable ->
+                try {
+                    cacheable.limpiarCache()
+                    cacheablesLimpiados++
+                } catch (e: Exception) {
+                    android.util.Log.e("CacheManager", "Error limpiando caché: ${e.message}")
+                }
             }
         }
+
+        android.util.Log.d("CacheManager", "$cacheablesLimpiados cachés limpiados")
+
+        // Limpiar caché legacy si existe
+        limpiarCachesLegacy()
     }
 
     /**
-     * Función para limpiar cachés de emergencia
+     * Obtiene información de todos los cachés registrados
+     */
+    fun obtenerInfoCaches(): String {
+        limpiarReferenciasNulas()
+
+        val info = StringBuilder()
+        info.appendLine("=== INFORMACIÓN DE CACHÉS ===")
+        info.appendLine("Componentes registrados: ${cacheableInstances.size}")
+
+        cacheableInstances.forEachIndexed { index, weakRef ->
+            weakRef.get()?.let { cacheable ->
+                info.appendLine("[$index] ${cacheable.javaClass.simpleName}: ${cacheable.obtenerInfoCache()}")
+            }
+        }
+
+        return info.toString()
+    }
+
+    /**
+     * Limpia referencias nulas (WeakReferences donde el objeto fue recolectado)
+     */
+    private fun limpiarReferenciasNulas() {
+        val antes = cacheableInstances.size
+        cacheableInstances.removeIf { it.get() == null }
+        val despues = cacheableInstances.size
+
+        if (antes != despues) {
+            android.util.Log.d("CacheManager", "${antes - despues} referencias nulas removidas")
+        }
+    }
+
+    /**
+     * Limpieza de emergencia
      */
     fun limpiezaDeEmergencia() {
-        android.util.Log.w("CacheManager", "LIMPIEZA DE EMERGENCIA - Limpiando todos los cachés")
-
+        android.util.Log.w("CacheManager", "🚨 LIMPIEZA DE EMERGENCIA")
         try {
-            // Limpiar cachés normalmente
             limpiarTodosLosCaches()
-
-            // Invalidar cachés temporales por si acaso
-            SupervisorViewModel.invalidarCacheTemporal()
-
-            android.util.Log.w("CacheManager", "Limpieza de emergencia completada")
+            cacheableInstances.clear()
+            limpiarCachesLegacy()
         } catch (e: Exception) {
             android.util.Log.e("CacheManager", "Error crítico en limpieza de emergencia: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Compatibilidad con sistema legacy
+     */
+    @Suppress("TRY_CATCH_ON_SEALED_CLASSES")
+    private fun limpiarCachesLegacy() {
+        try {
+            // Importar dinámicamente para evitar dependencias rígidas
+            val reportDetailsClass = Class.forName("com.tulsa.aca.viewmodel.ReportDetailsViewModel")
+            val limpiarCacheMethod = reportDetailsClass.getDeclaredMethod("limpiarCache")
+            limpiarCacheMethod.invoke(null)
+
+            val supervisorClass = Class.forName("com.tulsa.aca.viewmodel.SupervisorViewModel")
+            val limpiarCacheTodasMethod = supervisorClass.getDeclaredMethod("limpiarCacheTodasLasInstancias")
+            limpiarCacheTodasMethod.invoke(null)
+
+            android.util.Log.d("CacheManager", "Cachés legacy limpiados")
+        } catch (e: Exception) {
+            android.util.Log.d("CacheManager", "Cache legacy no encontrado o ya migrado")
         }
     }
 }

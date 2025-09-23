@@ -10,6 +10,8 @@ import com.tulsa.aca.data.repository.ActivoRepository
 import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteRepository
 import com.tulsa.aca.data.repository.UsuarioRepository
+import com.tulsa.aca.utils.CacheManager
+import com.tulsa.aca.utils.Cacheable
 import com.tulsa.aca.utils.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +21,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class FiltrosReporte(
     val activoSeleccionado: Activo? = null,
@@ -59,7 +63,8 @@ data class SupervisorUiState(
     val isLoadingMore: Boolean = false // Loading para "Cargar más"
 )
 
-class SupervisorViewModel : ViewModel() {
+class SupervisorViewModel : ViewModel(), Cacheable {
+
     private val reporteRepository = ReporteRepository()
     private val activoRepository = ActivoRepository()
     private val usuarioRepository = UsuarioRepository()
@@ -68,84 +73,113 @@ class SupervisorViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(SupervisorUiState())
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
 
+    // THREAD-SAFE: AtomicLong y AtomicBoolean para thread safety
+    private val ultimaActualizacion = AtomicLong(0L)
+    private val datosYaCargados = AtomicBoolean(false)
+    private val ultimaCargaExitosa = AtomicBoolean(false)
+
+    // Datos por instancia
+    @Volatile
+    private var todosLosReportes: List<ReporteCompleto> = emptyList()
+    @Volatile
+    private var reportesFiltrados: List<ReporteCompleto> = emptyList()
+
     // CONSTANTES DE PAGINACIÓN
     companion object {
         private const val REPORTES_POR_PAGINA = 15
+        private const val CACHE_EXPIRY_MS = 3 * 60 * 1000L // 3 minutos
 
-        // REGISTRO DE TODAS LAS INSTANCIAS PARA LIMPIEZA
-        private val instanciasActivas = mutableListOf<SupervisorViewModel>()
-
-        // FUNCIÓN PARA LIMPIAR CACHÉ DE TODAS LAS INSTANCIAS
+        // MÉTODOS LEGACY PARA COMPATIBILIDAD HACIA ATRÁS
+        @Deprecated("Usar CacheManager.limpiarTodosLosCaches()", ReplaceWith("CacheManager.limpiarTodosLosCaches()"))
         fun limpiarCacheTodasLasInstancias() {
-            android.util.Log.d("SupervisorVM", "Limpiando caché de ${instanciasActivas.size} instancias del SupervisorViewModel")
-
-            instanciasActivas.forEach { instancia ->
-                instancia.limpiarCacheInterno()
-            }
-
-            // Limpiar la lista de instancias también
-            instanciasActivas.clear()
-
-            android.util.Log.d("SupervisorVM", "Caché temporal del Supervisor completamente limpiado")
+            android.util.Log.d("SupervisorVM", "Método legacy llamado - redirigiendo a CacheManager")
+            CacheManager.limpiarTodosLosCaches()
         }
 
-        // FUNCIÓN PARA OBTENER INFO DEL CACHÉ
+        @Deprecated("Usar CacheManager.obtenerInfoCaches()", ReplaceWith("CacheManager.obtenerInfoCaches()"))
         fun obtenerInfoCache(): String {
-            return if (instanciasActivas.isEmpty()) {
-                "Sin instancias activas"
-            } else {
-                val totalReportes = instanciasActivas.sumOf { it.todosLosReportes.size }
-                "${instanciasActivas.size} instancias, $totalReportes reportes en caché"
-            }
+            return "Migrado a CacheManager - usar CacheManager.obtenerInfoCaches()"
         }
 
-        // FUNCIÓN PARA INVALIDAR CACHÉ (útil para casos de emergencia)
         fun invalidarCacheTemporal() {
-            android.util.Log.d("SupervisorVM", "Invalidando caché temporal de todas las instancias")
-
-            instanciasActivas.forEach { instancia ->
-                instancia.ultimaActualizacion = 0L // Forzar expiración
-                instancia.datosYaCargados = false
-                instancia.ultimaCargaExitosa = false
-            }
+            android.util.Log.d("SupervisorVM", "⚠invalidarCacheTemporal() es deprecated - usar instancias individuales")
+            // Para compatibilidad, limpiar todos los cachés
+            CacheManager.limpiarTodosLosCaches()
         }
     }
 
-    private var todosLosReportes: List<ReporteCompleto> = emptyList()
-    private var reportesFiltrados: List<ReporteCompleto> = emptyList()
+    init {
+        // REGISTRAR EN CACHE MANAGER MEJORADO
+        CacheManager.registrar(this)
+        android.util.Log.d("SupervisorVM", "SupervisorViewModel creado y registrado en CacheManager")
+    }
 
-    // Caché para evitar recargas innecesarias
-    private var datosYaCargados = false
-    private var ultimaCargaExitosa = false
-    private var ultimaActualizacion = 0L
-    private val cacheExpiry = 3 * 60 * 1000L // 3 minutos
+    // IMPLEMENTACIÓN DE CACHEABLE INTERFACE
+    override fun limpiarCache() {
+        android.util.Log.d("SupervisorVM", "Limpiando caché interno de SupervisorViewModel")
 
+        // Limpiar listas de datos de forma thread-safe
+        synchronized(this) {
+            todosLosReportes = emptyList()
+            reportesFiltrados = emptyList()
+        }
+
+        // THREAD-SAFE: Usar atomic operations
+        datosYaCargados.set(false)
+        ultimaCargaExitosa.set(false)
+        ultimaActualizacion.set(0L)
+
+        // Resetear estado UI
+        _uiState.value = SupervisorUiState()
+
+        android.util.Log.d("SupervisorVM", "Caché interno limpiado - Estado reseteado")
+    }
+
+    override fun obtenerInfoCache(): String {
+        return "Reportes: ${todosLosReportes.size}, Filtrados: ${reportesFiltrados.size}, " +
+                "Última actualización: ${(System.currentTimeMillis() - ultimaActualizacion.get()) / 1000}s atrás"
+    }
+
+    override fun esCacheExpirado(): Boolean {
+        return (System.currentTimeMillis() - ultimaActualizacion.get()) > CACHE_EXPIRY_MS
+    }
+
+    // CLEANUP AL DESTRUIR
+    override fun onCleared() {
+        super.onCleared()
+        CacheManager.desregistrar(this)
+        android.util.Log.d("SupervisorVM", "🗑️ SupervisorViewModel destruido y desregistrado del CacheManager")
+    }
+
+    /**
+     * MÉTODO PRINCIPAL OPTIMIZADO - Carga datos con caché inteligente
+     */
     fun cargarDatosSupervisor(forzarRecarga: Boolean = false) {
         val ahora = System.currentTimeMillis()
-        val cacheExpirado = (ahora - ultimaActualizacion) > cacheExpiry
+        val cacheExpirado = esCacheExpirado()
 
-        // Usar caché si está fresco y no se fuerza recarga
+        // USAR CACHÉ SI ESTÁ FRESCO Y VÁLIDO
         if (!forzarRecarga &&
-            datosYaCargados &&
-            ultimaCargaExitosa &&
+            datosYaCargados.get() &&
+            ultimaCargaExitosa.get() &&
             !cacheExpirado &&
             _uiState.value.reportes.isNotEmpty() &&
             _uiState.value.error == null &&
             !_uiState.value.isLoading) {
 
-            android.util.Log.d("SupervisorVM", "Usando datos cacheados (${(ahora - ultimaActualizacion)/1000}s antiguos)")
+            android.util.Log.d("SupervisorVM", "Usando datos cacheados (${(ahora - ultimaActualizacion.get())/1000}s antiguos)")
             return
         }
 
         val tipoRecarga = when {
             forzarRecarga -> "forzada"
-            cacheExpirado -> "por expiración (${(ahora - ultimaActualizacion)/1000}s)"
+            cacheExpirado -> "por expiración (${(ahora - ultimaActualizacion.get())/1000}s)"
             else -> "inicial"
         }
-        android.util.Log.d("SupervisorVM", "Cargando datos frescos - Razón: $tipoRecarga")
+        android.util.Log.d("SupervisorVM", "📡 Cargando datos frescos - Razón: $tipoRecarga")
 
-        datosYaCargados = true
-        ultimaCargaExitosa = false
+        datosYaCargados.set(true)
+        ultimaCargaExitosa.set(false)
 
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -191,8 +225,11 @@ class SupervisorViewModel : ViewModel() {
                 // CALCULAR CUÁLES TIENEN PROBLEMAS
                 val reportesConProblemas = calcularReportesConProblemas(reportesOrdenados)
 
-                todosLosReportes = reportesConProblemas
-                reportesFiltrados = todosLosReportes // Inicialmente sin filtros
+                // THREAD-SAFE ASSIGNMENT
+                synchronized(this@SupervisorViewModel) {
+                    todosLosReportes = reportesConProblemas
+                    reportesFiltrados = todosLosReportes // Inicialmente sin filtros
+                }
 
                 val estadisticas = calcularEstadisticas(todosLosReportes)
 
@@ -210,8 +247,8 @@ class SupervisorViewModel : ViewModel() {
                     isLoading = false
                 )
 
-                ultimaActualizacion = ahora
-                ultimaCargaExitosa = true
+                ultimaActualizacion.set(ahora)
+                ultimaCargaExitosa.set(true)
 
                 android.util.Log.d("SupervisorVM", "Datos cargados: ${reportesTotales.size} reportes totales, ${reportesPaginados.size} mostrados inicialmente")
 
@@ -221,11 +258,14 @@ class SupervisorViewModel : ViewModel() {
                     isLoading = false,
                     error = "Error al cargar datos: ${e.message}"
                 )
+                ultimaCargaExitosa.set(false)
             }
         }
     }
 
-    // NUEVA FUNCIÓN PARA CARGAR MÁS REPORTES
+    /**
+     * PAGINACIÓN - Cargar más reportes
+     */
     fun cargarMasReportes() {
         val estadoActual = _uiState.value
 
@@ -243,8 +283,10 @@ class SupervisorViewModel : ViewModel() {
                 val siguientesCantidad = REPORTES_POR_PAGINA
                 val nuevoTotal = reportesMostradosActual + siguientesCantidad
 
-                // Tomar más reportes de los filtrados
-                val reportesAmpliados = reportesFiltrados.take(nuevoTotal)
+                // Tomar más reportes de los filtrados (thread-safe read)
+                val reportesAmpliados = synchronized(this@SupervisorViewModel) {
+                    reportesFiltrados.take(nuevoTotal)
+                }
 
                 _uiState.value = _uiState.value.copy(
                     reportes = reportesAmpliados,
@@ -265,11 +307,18 @@ class SupervisorViewModel : ViewModel() {
         }
     }
 
-    // ACTUALIZAR FUNCIÓN DE FILTROS
+    /**
+     * FILTROS - Aplicar filtros con paginación reset
+     */
     fun aplicarFiltros(filtros: FiltrosReporte) {
         android.util.Log.d("SupervisorVM", "Aplicando filtros: soloConProblemas=${filtros.soloConProblemas}")
 
-        reportesFiltrados = filtrarReportes(todosLosReportes, filtros)
+        // Thread-safe filtering
+        val nuevosReportesFiltrados = synchronized(this) {
+            filtrarReportes(todosLosReportes, filtros)
+        }
+
+        reportesFiltrados = nuevosReportesFiltrados
 
         // Resetear paginación a los primeros 15
         val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
@@ -286,7 +335,9 @@ class SupervisorViewModel : ViewModel() {
     }
 
     fun limpiarFiltros() {
-        reportesFiltrados = todosLosReportes
+        synchronized(this) {
+            reportesFiltrados = todosLosReportes
+        }
         val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
 
         _uiState.value = _uiState.value.copy(
@@ -298,59 +349,38 @@ class SupervisorViewModel : ViewModel() {
         )
     }
 
-    // Method para pull-to-refresh
+    /**
+     * Method para pull-to-refresh
+     */
     fun forzarRecarga() {
         cargarDatosSupervisor(forzarRecarga = true)
     }
 
-    // Invalidar caché cuando llega un nuevo reporte (para uso futuro)
+    /**
+     * Invalidar caché cuando llega un nuevo reporte
+     */
     fun invalidarCachePorNuevoReporte() {
-        ultimaActualizacion = 0L // Fuerza expiración inmediata
+        ultimaActualizacion.set(0L) // Fuerza expiración inmediata
     }
 
     fun limpiarError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
 
-    // FUNCIÓN PRIVADA PARA LIMPIAR CACHÉ DE ESTA INSTANCIA
-    private fun limpiarCacheInterno() {
-        android.util.Log.d("SupervisorVM", "🗑️ Limpiando caché interno de instancia SupervisorViewModel")
-
-        // Limpiar listas de datos
-        todosLosReportes = emptyList()
-        reportesFiltrados = emptyList()
-
-        // Resetear estados de caché
-        datosYaCargados = false
-        ultimaCargaExitosa = false
-        ultimaActualizacion = 0L
-
-        // Limpiar estado UI
-        _uiState.value = SupervisorUiState()
-
-        android.util.Log.d("SupervisorVM", "✅ Caché interno limpiado - Estado reseteado")
-    }
-
-    // AGREGAR AL INIT PARA REGISTRAR LA INSTANCIA
-    init {
-        instanciasActivas.add(this)
-        android.util.Log.d("SupervisorVM", "➕ Nueva instancia SupervisorViewModel registrada (Total: ${instanciasActivas.size})")
-    }
-
-    // LIMPIAR AL DESTRUIR EL ViewModel
-    override fun onCleared() {
-        super.onCleared()
-        instanciasActivas.remove(this)
-        android.util.Log.d("SupervisorVM", "➖ Instancia SupervisorViewModel eliminada (Restantes: ${instanciasActivas.size})")
-    }
-
-    // FUNCIÓN PÚBLICA PARA OBTENER INFO DE ESTA INSTANCIA
+    /**
+     * FUNCIÓN PÚBLICA PARA OBTENER INFO DE ESTA INSTANCIA (COMPATIBILIDAD)
+     */
     fun obtenerInfoCacheInstancia(): String {
-        return "Reportes: ${todosLosReportes.size}, Filtrados: ${reportesFiltrados.size}, " +
-                "Última actualización: ${(System.currentTimeMillis() - ultimaActualizacion) / 1000}s atrás"
+        return obtenerInfoCache()
     }
 
-    // FUNCIÓN DE FILTROS
+    // ===============================
+    // MÉTODOS PRIVADOS AUXILIARES
+    // ===============================
+
+    /**
+     * FUNCIÓN DE FILTROS - Thread-safe
+     */
     private fun filtrarReportes(
         reportes: List<ReporteCompleto>,
         filtros: FiltrosReporte
@@ -375,7 +405,7 @@ class SupervisorViewModel : ViewModel() {
                 return@filter false
             }
 
-            // Filtros de fecha (implementación básica)
+            // Filtros de fecha
             reporte.timestampCompletado?.let { timestampStr ->
                 try {
                     // Parsear la fecha del reporte
@@ -421,7 +451,9 @@ class SupervisorViewModel : ViewModel() {
         }
     }
 
-    // NUEVA FUNCIÓN PARA CALCULAR REPORTES CON PROBLEMAS
+    /**
+     * FUNCIÓN PARA CALCULAR REPORTES CON PROBLEMAS
+     */
     private suspend fun calcularReportesConProblemas(reportes: List<ReporteCompleto>): List<ReporteCompleto> {
         if (reportes.isEmpty()) return reportes
 
@@ -466,20 +498,35 @@ class SupervisorViewModel : ViewModel() {
             // Agregar activo al set
             activosSet.add(reporte.activoId)
 
-            // Contar reportes por fecha (implementación básica)
+            // Contar reportes por fecha (implementación básica mejorable)
             reporte.timestampCompletado?.let { timestamp ->
                 try {
-                    reportesEstaSemana++
-                    if (reportes.indexOf(reporteCompleto) < 3) {
+                    val reporteDate = DateUtils.parseTimestamp(timestamp)
+
+                    // Verificar si es de hoy
+                    val esDeHoy = Calendar.getInstance().apply {
+                        time = reporteDate
+                    }.get(Calendar.DAY_OF_YEAR) == hoy.get(Calendar.DAY_OF_YEAR) &&
+                            Calendar.getInstance().apply {
+                                time = reporteDate
+                            }.get(Calendar.YEAR) == hoy.get(Calendar.YEAR)
+
+                    if (esDeHoy) {
                         reportesHoy++
                     }
+
+                    // Verificar si es de esta semana
+                    if (reporteDate.after(inicioSemana.time) || reporteDate.equals(inicioSemana.time)) {
+                        reportesEstaSemana++
+                    }
+
                 } catch (e: Exception) {
-                    // Ignorar errores
+                    android.util.Log.w("SupervisorVM", "Error parseando fecha para estadísticas: ${e.message}")
                 }
             }
         }
 
-        android.util.Log.d("SupervisorVM", "Estadísticas: Total=${reportes.size}, ConProblemas=$reportesConProblemas")
+        android.util.Log.d("SupervisorVM", "Estadísticas: Total=${reportes.size}, Hoy=$reportesHoy, Semana=$reportesEstaSemana, ConProblemas=$reportesConProblemas")
 
         return EstadisticasSupervisor(
             totalReportes = reportes.size,
