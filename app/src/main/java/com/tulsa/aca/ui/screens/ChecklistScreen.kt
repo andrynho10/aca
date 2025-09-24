@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -19,8 +21,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.CategoriaPlantilla
 import com.tulsa.aca.data.models.PlantillaChecklist
@@ -322,7 +328,7 @@ fun ChecklistScreen(
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Revisar y Enviar Checklist") // TEXTO ACTUALIZADO
+                                        Text("Revisar y Enviar Checklist")
                                     }
                                 }
                             }
@@ -387,6 +393,10 @@ private fun QuestionItem(
     onFotosChanged: (List<Uri>) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // CONTROLADORES PARA EL TECLADO
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -397,7 +407,7 @@ private fun QuestionItem(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Botones BUENO/MALO con colores
+        // Botones BUENO/MALO
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -405,13 +415,9 @@ private fun QuestionItem(
                 onClick = { onRespuestaChanged(true) },
                 modifier = Modifier.weight(1f),
                 colors = if (respuesta?.respuesta == true) {
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 } else {
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 }
             ) {
                 Text(
@@ -427,13 +433,9 @@ private fun QuestionItem(
                 onClick = { onRespuestaChanged(false) },
                 modifier = Modifier.weight(1f),
                 colors = if (respuesta?.respuesta == false) {
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 } else {
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 }
             ) {
                 Text(
@@ -446,20 +448,52 @@ private fun QuestionItem(
             }
         }
 
-        // Campo de comentario (para respuestas MALO)
+        // CAMPO DE COMENTARIO CON BOTÓN LISTO INTEGRADO
         if (respuesta?.respuesta == false) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = respuesta.comentario,
-                onValueChange = onComentarioChanged,
-                label = { Text("Comentario (requerido para estado MALO)") },
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 2,
-                shape = RoundedCornerShape(8.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            // BOX PARA SUPERPONER EL BOTÓN SOBRE EL TEXTFIELD
+            Box(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = respuesta.comentario,
+                    onValueChange = onComentarioChanged,
+                    label = { Text("Comentario (requerido para estado MALO)") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 48.dp), // Espacio para el botón a la derecha
+                    maxLines = 4,
+                    minLines = 2,
+                    shape = RoundedCornerShape(8.dp),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Default // MANTENER ENTER
+                    )
+                )
 
+                // BOTÓN "LISTO"
+                if (respuesta.comentario.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp)
+                            .size(40.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Listo",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
             PhotoCaptureComponent(
                 photos = respuesta.fotos,
                 onPhotosChanged = onFotosChanged
@@ -644,7 +678,7 @@ private fun ConfirmacionEnvioDialog(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Esta inspección contiene $respuestasMalas problema(s) detectado(s)",
+                                    text = "Esta inspección contiene $respuestasMalas item(s) Malo(s) detectado(s)",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onErrorContainer
@@ -702,7 +736,7 @@ private fun ConfirmacionEnvioDialog(
         },
         dismissButton = {
             TextButton(onClick = onCancelar) {
-                Text("Revisar Más")
+                Text("Volver a Revisar")
             }
         }
     )

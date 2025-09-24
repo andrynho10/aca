@@ -8,15 +8,11 @@ import com.tulsa.aca.data.repository.ActivoRepository
 import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteCompleto
 import com.tulsa.aca.data.repository.ReporteRepository
-import com.tulsa.aca.utils.CacheManager
-import com.tulsa.aca.utils.Cacheable
-import com.tulsa.aca.utils.ReportCache
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 
 data class ReportDetailsUiState(
     val reporteCompleto: ReporteCompleto? = null,
@@ -26,17 +22,7 @@ data class ReportDetailsUiState(
     val error: String? = null
 )
 
-// CACHE ENTRY CON TTL
-private data class CacheEntry<T>(
-    val data: T,
-    val timestamp: Long = System.currentTimeMillis()
-) {
-    fun isExpired(ttlMs: Long): Boolean =
-        (System.currentTimeMillis() - timestamp) > ttlMs
-}
-
-class ReportDetailsViewModel : ViewModel(), Cacheable {
-
+class ReportDetailsViewModel : ViewModel() {
     private val reporteRepository = ReporteRepository()
     private val activoRepository = ActivoRepository()
     private val plantillaRepository = PlantillaRepository()
@@ -44,52 +30,39 @@ class ReportDetailsViewModel : ViewModel(), Cacheable {
     private val _uiState = MutableStateFlow(ReportDetailsUiState())
     val uiState: StateFlow<ReportDetailsUiState> = _uiState.asStateFlow()
 
+    // CACHÉ SIMPLE Y THREAD-SAFE - PERSISTE ENTRE NAVEGACIONES
     companion object {
-        // MÉTODOS LEGACY PARA COMPATIBILIDAD
-        @Deprecated("Usar ReportCache directamente")
+        // THREAD-SAFE: ConcurrentHashMap en lugar de mutableMapOf
+        private val cacheReportes = ConcurrentHashMap<String, ReporteCompleto>()
+        private val cacheActivos = ConcurrentHashMap<Int, Activo>()
+        private val cachePlantillas = ConcurrentHashMap<Int, PlantillaChecklist>()
+
+        // COMPATIBILIDAD CON CACHEMANAGER
         fun limpiarCache() {
-            ReportCache.limpiarCache()
+            val reportesAntes = cacheReportes.size
+            val activosAntes = cacheActivos.size
+            val plantillasAntes = cachePlantillas.size
+
+            cacheReportes.clear()
+            cacheActivos.clear()
+            cachePlantillas.clear()
+
+            android.util.Log.d("ReportDetailsVM",
+                "Caché limpiado: $reportesAntes reportes, $activosAntes activos, $plantillasAntes plantillas")
         }
 
-        @Deprecated("Usar ReportCache.obtenerInfoCache()")
         fun obtenerTamanoCache(): String {
-            return ReportCache.obtenerInfoCache()
+            return "Reportes: ${cacheReportes.size}, Activos: ${cacheActivos.size}, Plantillas: ${cachePlantillas.size}"
         }
     }
 
-    init {
-        CacheManager.registrar(this)
-        android.util.Log.d("ReportDetailsVM", "ReportDetailsViewModel registrado")
-    }
-
-    // IMPLEMENTACIÓN CACHEABLE (DELEGA A REPORTCACHE)
-    override fun limpiarCache() {
-        ReportCache.limpiarCache()
-        _uiState.value = ReportDetailsUiState()
-    }
-
-    override fun obtenerInfoCache(): String {
-        return ReportCache.obtenerInfoCache()
-    }
-
-    override fun esCacheExpirado(): Boolean {
-        return ReportCache.esCacheExpirado()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        CacheManager.desregistrar(this)
-        // NO limpiar ReportCache aquí - es persistente
-        android.util.Log.d("ReportDetailsVM", "ReportDetailsViewModel destruido")
-    }
-
-    // MÉTODO PRINCIPAL CON CACHÉ SINGLETON
+    // MÉTODO PRINCIPAL - SIMPLE Y DIRECTO
     fun cargarDetallesReporte(reporteId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
-                // USAR CACHÉ SINGLETON PERSISTENTE
+                // USAR CACHÉ SIMPLE
                 val reporteCompleto = obtenerReporteDesdeCacheOCargar(reporteId)
 
                 if (reporteCompleto != null) {
@@ -102,6 +75,8 @@ class ReportDetailsViewModel : ViewModel(), Cacheable {
                         plantilla = plantilla,
                         isLoading = false
                     )
+
+                    android.util.Log.d("ReportDetailsVM", "Reporte $reporteId cargado (desde ${if (cacheReportes.containsKey(reporteId)) "caché" else "servidor"})")
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -110,6 +85,7 @@ class ReportDetailsViewModel : ViewModel(), Cacheable {
                 }
 
             } catch (e: Exception) {
+                android.util.Log.e("ReportDetailsVM", "Error cargando reporte: ${e.message}", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = "Error cargando reporte: ${e.message}"
@@ -118,31 +94,32 @@ class ReportDetailsViewModel : ViewModel(), Cacheable {
         }
     }
 
-    // MÉTODOS QUE USAN EL CACHÉ SINGLETON
+    // MÉTODOS AUXILIARES SIMPLES
     private suspend fun obtenerReporteDesdeCacheOCargar(reporteId: String): ReporteCompleto? {
         // 1. Intentar desde caché
-        ReportCache.getReporte(reporteId)?.let { return it }
+        cacheReportes[reporteId]?.let {
+            android.util.Log.d("ReportDetailsVM", "Reporte $reporteId desde caché")
+            return it
+        }
 
         // 2. Cargar desde servidor
         android.util.Log.d("ReportDetailsVM", "Cargando reporte $reporteId desde servidor")
         return reporteRepository.obtenerReporteCompleto(reporteId)?.also { reporte ->
-            ReportCache.putReporte(reporteId, reporte)
+            cacheReportes[reporteId] = reporte
         }
     }
 
     private suspend fun obtenerActivoDesdeCacheOCargar(activoId: Int): Activo? {
-        ReportCache.getActivo(activoId)?.let { return it }
-
+        cacheActivos[activoId]?.let { return it }
         return activoRepository.obtenerActivoPorId(activoId)?.also { activo ->
-            ReportCache.putActivo(activoId, activo)
+            cacheActivos[activoId] = activo
         }
     }
 
     private suspend fun obtenerPlantillaDesdeCacheOCargar(plantillaId: Int): PlantillaChecklist? {
-        ReportCache.getPlantilla(plantillaId)?.let { return it }
-
+        cachePlantillas[plantillaId]?.let { return it }
         return plantillaRepository.obtenerPlantillaCompleta(plantillaId)?.also { plantilla ->
-            ReportCache.putPlantilla(plantillaId, plantilla)
+            cachePlantillas[plantillaId] = plantilla
         }
     }
 }
