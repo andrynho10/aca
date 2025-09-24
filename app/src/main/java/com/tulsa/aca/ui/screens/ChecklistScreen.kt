@@ -459,15 +459,15 @@ private fun QuestionItem(
                 OutlinedTextField(
                     value = respuesta.comentario,
                     onValueChange = onComentarioChanged,
-                    label = { Text("Comentario (requerido para estado MALO)") },
+                    label = { Text("Comentario (requerido para estado Malo)") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(end = 48.dp), // Espacio para el botón a la derecha
+                        .padding(end = 48.dp),
                     maxLines = 4,
                     minLines = 2,
                     shape = RoundedCornerShape(8.dp),
                     keyboardOptions = KeyboardOptions(
-                        imeAction = ImeAction.Default // MANTENER ENTER
+                        imeAction = ImeAction.Default
                     )
                 )
 
