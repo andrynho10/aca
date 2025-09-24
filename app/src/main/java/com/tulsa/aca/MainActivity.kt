@@ -203,7 +203,7 @@ fun ACAApp(
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onViewPhoto = { photos, index -> // AGREGAR ESTE CALLBACK
+                onViewPhoto = { photos, index ->
                     navController.navigate(Screen.PhotoViewer.createRoute(photos, index))
                 }
             )

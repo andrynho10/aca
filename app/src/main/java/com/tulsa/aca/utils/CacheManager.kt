@@ -94,7 +94,7 @@ object CacheManager {
      * Limpieza de emergencia
      */
     fun limpiezaDeEmergencia() {
-        android.util.Log.w("CacheManager", "🚨 LIMPIEZA DE EMERGENCIA")
+        android.util.Log.w("CacheManager", "    LIMPIEZA DE EMERGENCIA")
         try {
             limpiarTodosLosCaches()
             cacheableInstances.clear()

@@ -176,7 +176,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
             cacheExpirado -> "por expiración (${(ahora - ultimaActualizacion.get())/1000}s)"
             else -> "inicial"
         }
-        android.util.Log.d("SupervisorVM", "📡 Cargando datos frescos - Razón: $tipoRecarga")
+        android.util.Log.d("SupervisorVM", "Cargando datos frescos - Razón: $tipoRecarga")
 
         datosYaCargados.set(true)
         ultimaCargaExitosa.set(false)

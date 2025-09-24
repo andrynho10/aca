@@ -72,9 +72,9 @@ object UserSession {
         val user = currentUserRef.get()
         return buildString {
             if (user != null) {
-                appendLine("✅ Usuario logueado: ${user.nombreCompleto} (ID: ${user.id})")
+                appendLine("Usuario logueado: ${user.nombreCompleto} (ID: ${user.id})")
             } else {
-                appendLine("❌ No hay usuario logueado")
+                appendLine("No hay usuario logueado")
             }
             appendLine(CacheManager.obtenerInfoCaches())
         }
