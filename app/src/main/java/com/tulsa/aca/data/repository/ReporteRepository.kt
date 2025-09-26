@@ -147,7 +147,7 @@ class ReporteRepository {
                     ReporteInspeccion::activoId eq activoId
                 }
                 order(column = "timestamp_completado", order = Order.DESCENDING)
-                limit(limite.toLong()) // 🟢 LIMITAR A LAS N MÁS RECIENTES
+                limit(limite.toLong()) // LIMITAR A LAS N MÁS RECIENTES
             }.decodeList<ReporteInspeccion>()
 
             android.util.Log.d("ReporteRepository", "Historial limitado obtenido: ${reportes.size} reportes de máximo $limite")
@@ -218,35 +218,156 @@ class ReporteRepository {
             null
         }
     }
+    // Actualizar en ReporteRepository.kt
     suspend fun verificarReportesConProblemas(reporteIds: List<String>): Map<String, Boolean> {
         if (reporteIds.isEmpty()) return emptyMap()
 
+        android.util.Log.d("ReporteRepository", "🔍 VERIFICANDO PROBLEMAS para ${reporteIds.size} reportes:")
+        reporteIds.forEach { id ->
+            android.util.Log.d("ReporteRepository", "   - Reporte ID: $id")
+        }
+
         return try {
-            val reportesConProblemas = mutableMapOf<String, Boolean>()
+            // ✅ MÉTODO CORREGIDO: Usar múltiples consultas O método alternativo
+            val respuestasFiltradas = mutableListOf<RespuestaReporte>()
 
-            // Obtener TODAS las respuestas de la tabla
-            val todasLasRespuestas = client.from("respuestas_reporte").select {
-                // Sin filtro - obtener todas
-            }.decodeList<RespuestaReporte>()
+            // Opción 1: Consultas individuales (más confiable)
+            reporteIds.forEach { reporteId ->
+                val respuestasDelReporte = client.from("respuestas_reporte").select {
+                    filter {
+                        RespuestaReporte::reporteId eq reporteId
+                    }
+                }.decodeList<RespuestaReporte>()
+                respuestasFiltradas.addAll(respuestasDelReporte)
+            }
 
-            // Filtrar solo las respuestas de los reportes que nos interesan
-            val respuestasFiltradas = todasLasRespuestas.filter { it.reporteId in reporteIds }
+            android.util.Log.d("ReporteRepository", "📋 RESPUESTAS ENCONTRADAS: ${respuestasFiltradas.size}")
+            respuestasFiltradas.forEach { respuesta ->
+                android.util.Log.d("ReporteRepository", "   - Reporte: ${respuesta.reporteId}, Pregunta: ${respuesta.preguntaId}, Respuesta: ${respuesta.respuesta}")
+            }
 
             // Agrupar por reporte y verificar problemas
             val respuestasPorReporte = respuestasFiltradas.groupBy { it.reporteId }
+            val reportesConProblemas = mutableMapOf<String, Boolean>()
 
             reporteIds.forEach { reporteId ->
                 val respuestasDelReporte = respuestasPorReporte[reporteId] ?: emptyList()
-                val tieneProblemas = respuestasDelReporte.any { !it.respuesta }
+                val tieneProblemas = respuestasDelReporte.any { !it.respuesta } // false = MALO
+
                 reportesConProblemas[reporteId] = tieneProblemas
+
+                val estadoProblemas = if (tieneProblemas) "⚠️ CON PROBLEMAS" else "✅ SIN PROBLEMAS"
+                android.util.Log.d("ReporteRepository", "📊 Reporte $reporteId: $estadoProblemas (${respuestasDelReporte.size} respuestas)")
+
+                if (tieneProblemas) {
+                    val respuestasMalas = respuestasDelReporte.filter { !it.respuesta }
+                    android.util.Log.d("ReporteRepository", "   ❌ Respuestas MALO: ${respuestasMalas.size}")
+                    respuestasMalas.forEach { mala ->
+                        android.util.Log.d("ReporteRepository", "      - Pregunta ${mala.preguntaId}: ${mala.comentario}")
+                    }
+                }
             }
 
-            android.util.Log.d("ReporteRepository", "Verificados ${reporteIds.size} reportes de ${todasLasRespuestas.size} respuestas totales")
+            android.util.Log.d("ReporteRepository", "🏁 RESULTADO: ${reportesConProblemas.count { it.value }} de ${reporteIds.size} reportes tienen problemas")
             reportesConProblemas
 
         } catch (e: Exception) {
-            android.util.Log.e("ReporteRepository", "Error verificando reportes: ${e.message}")
+            android.util.Log.e("ReporteRepository", "❌ ERROR verificando reportes: ${e.message}", e)
             emptyMap()
+        }
+    }
+    suspend fun crearReporteConTimestamps(
+        context: Context,
+        activoId: Int,
+        usuarioId: String,
+        plantillaId: Int,
+        respuestasConFotos: List<RespuestaConFotos>,
+        timestampInicio: String,
+        timestampFin: String,
+        duracionMinutos: Int
+    ): Boolean {
+        return try {
+            val reporteId = UUID.randomUUID().toString()
+
+            android.util.Log.d("ReporteRepository", "CREANDO REPORTE CON TIMESTAMPS:")
+            android.util.Log.d("ReporteRepository", "  ID: $reporteId")
+            android.util.Log.d("ReporteRepository", "  Activo: $activoId")
+            android.util.Log.d("ReporteRepository", "  Usuario: $usuarioId")
+            android.util.Log.d("ReporteRepository", "  Respuestas: ${respuestasConFotos.size}")
+
+            // 1. CREAR REPORTE
+            val reporte = ReporteInspeccion(
+                id = reporteId,
+                activoId = activoId,
+                usuarioId = usuarioId,
+                plantillaId = plantillaId,
+                timestampInicio = timestampInicio,
+                timestampCompletado = timestampFin,
+                duracionMinutos = duracionMinutos
+            )
+
+            client.from("reportes_inspeccion").insert(reporte)
+            android.util.Log.d("ReporteRepository", "Reporte principal insertado")
+
+            // 2. INSERTAR RESPUESTAS CON DEBUG
+            val respuestasParaInsertar = respuestasConFotos.map {
+                it.respuesta.copy(reporteId = reporteId)
+            }
+
+            android.util.Log.d("ReporteRepository", "INSERTANDO RESPUESTAS:")
+            respuestasParaInsertar.forEach { respuesta ->
+                val estado = if (respuesta.respuesta) "BUENO" else "MALO"
+                android.util.Log.d("ReporteRepository", "  - Pregunta ${respuesta.preguntaId}: $estado")
+                if (!respuesta.respuesta) {
+                    android.util.Log.d("ReporteRepository", "    Comentario: ${respuesta.comentario}")
+                }
+            }
+
+            val respuestasInsertadas = client.from("respuestas_reporte")
+                .insert(respuestasParaInsertar) {
+                    select()
+                }.decodeList<RespuestaReporte>()
+
+            android.util.Log.d("ReporteRepository", "${respuestasInsertadas.size} respuestas insertadas exitosamente")
+
+            // 3. SUBIR FOTOS (lógica existente)
+            var fotosSubidas = 0
+            respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
+                val respuestaInsertada = respuestasInsertadas[index]
+                val fotos = respuestaConFotos.fotos
+
+                if (fotos.isNotEmpty() && respuestaInsertada.id != null) {
+                    val urlsFotos = storageRepository.subirFotos(
+                        context = context,
+                        fotos = fotos,
+                        reporteId = reporteId,
+                        preguntaId = respuestaInsertada.preguntaId
+                    )
+
+                    val fotosRespuesta = urlsFotos.map { url ->
+                        FotoRespuesta(
+                            respuestaId = respuestaInsertada.id,
+                            urlStorage = url
+                        )
+                    }
+
+                    if (fotosRespuesta.isNotEmpty()) {
+                        client.from("fotos_respuesta").insert(fotosRespuesta)
+                        fotosSubidas += fotosRespuesta.size
+                    }
+                }
+            }
+
+            android.util.Log.d("ReporteRepository", "REPORTE COMPLETADO:")
+            android.util.Log.d("ReporteRepository", "ID: $reporteId")
+            android.util.Log.d("ReporteRepository", "Duración: $duracionMinutos min")
+            android.util.Log.d("ReporteRepository", "Respuestas: ${respuestasInsertadas.size}")
+            android.util.Log.d("ReporteRepository", "Fotos: $fotosSubidas")
+
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("ReporteRepository", "ERROR AL CREAR REPORTE CON TIMESTAMPS: ${e.message}", e)
+            false
         }
     }
 }

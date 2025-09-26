@@ -9,7 +9,7 @@ data class Activo(
     val id: Int? = null,
     val nombre: String,
     val modelo: String,
-    val tipo: String, // "Montacargas", "Grúa Puente", etc.
+    val tipo: String,
     @SerialName("codigo_qr")
     val codigoQr: String,
     @SerialName("created_at")
@@ -99,10 +99,15 @@ data class ReporteInspeccion(
     val usuarioId: String,
     @SerialName("plantilla_id")
     val plantillaId: Int,
+    @SerialName("timestamp_inicio")
+    val timestampInicio: String? = null,        // NUEVO - Cuando empieza checklist
+
     @SerialName("timestamp_completado")
-    val timestampCompletado: String? = null,
-    @SerialName("created_at")
-    val createdAt: String? = null
+    val timestampCompletado: String? = null,    // Existente - Cuando termina
+
+    @SerialName("duracion_minutos")
+    val duracionMinutos: Int? = null,           // NUEVO - Calculado automáticamente
+    // Eliminado created_at por duplicidad con timestamp_completado
 )
 
 // URLs de fotos asociadas a respuestas

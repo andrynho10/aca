@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,38 +25,57 @@ fun ChecklistSelectionScreen(
     assetId: Int,
     onNavigateBack: () -> Unit,
     onViewHistory: (Int) -> Unit,
-    onChecklistSelected: (Int, Int) -> Unit, // assetId, templateId
+    onChecklistSelected: (Int, Int) -> Unit,
     modifier: Modifier = Modifier,
     activoViewModel: ActivoViewModel = viewModel(),
     plantillaViewModel: PlantillaViewModel = viewModel()
 ) {
+    // Estados existentes...
     val activos by activoViewModel.activos.collectAsState()
     val plantillas by plantillaViewModel.plantillas.collectAsState()
     val isLoading by plantillaViewModel.isLoading.collectAsState()
 
-    // Buscar el activo seleccionado
+    // 🆕 NUEVO: Estado para dialog de confirmación
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var selectedTemplateId by remember { mutableStateOf<Int?>(null) }
+
     val activo = remember(activos, assetId) {
         activos.find { it.id == assetId }
     }
 
-    // Cargar activos si no están cargados
+    // LaunchedEffects existentes...
     LaunchedEffect(Unit) {
         if (activos.isEmpty()) {
             activoViewModel.cargarActivos()
         }
     }
 
-    // Cargar plantillas cuando tengamos el activo
     LaunchedEffect(activo) {
         activo?.let {
             plantillaViewModel.cargarPlantillasPorTipo(it.tipo)
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // Top App Bar
+    // 🆕 NUEVO: Dialog de confirmación inicio
+    if (showConfirmDialog) {
+        ConfirmacionInicioInspeccionDialog(
+            nombreActivo = activo?.nombre ?: "Activo",
+            onConfirmar = {
+                showConfirmDialog = false
+                selectedTemplateId?.let { templateId ->
+                    // AQUÍ SE REGISTRA EL INICIO DEL TIMESTAMP
+                    onChecklistSelected(assetId, templateId)
+                }
+            },
+            onCancelar = {
+                showConfirmDialog = false
+                selectedTemplateId = null
+            }
+        )
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        // TopAppBar existente...
         TopAppBar(
             title = { Text("Seleccionar Checklist") },
             navigationIcon = {
@@ -68,7 +88,7 @@ fun ChecklistSelectionScreen(
             }
         )
 
-        // Información del activo CON BOTÓN DE HISTORIAL
+        // AssetInfoCard existente...
         activo?.let {
             AssetInfoCardWithHistory(
                 activo = it,
@@ -77,7 +97,7 @@ fun ChecklistSelectionScreen(
             )
         }
 
-        // Loading indicator
+        // Loading indicator existente...
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxWidth(),
@@ -87,7 +107,7 @@ fun ChecklistSelectionScreen(
             }
         }
 
-        // Lista de checklists disponibles
+        // MODIFICADO: Lista de checklists - MOSTRAR DIALOG ANTES
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
@@ -97,21 +117,21 @@ fun ChecklistSelectionScreen(
                 ChecklistCard(
                     plantilla = plantilla,
                     onClick = {
-                        onChecklistSelected(assetId, plantilla.id)
+                        // 🆕 EN LUGAR DE NAVEGAR DIRECTO, MOSTRAR DIALOG
+                        selectedTemplateId = plantilla.id
+                        showConfirmDialog = true
                     }
                 )
             }
         }
 
-        // Mensaje si no hay checklists
+        // Mensaje vacío existente...
         if (!isLoading && plantillas.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "No hay checklists disponibles",
                         style = MaterialTheme.typography.titleMedium
@@ -127,7 +147,102 @@ fun ChecklistSelectionScreen(
     }
 }
 
-// NUEVA FUNCIÓN - Reemplaza la función AssetInfoCard original
+// NUEVO COMPOSABLE: Dialog de confirmación
+@Composable
+private fun ConfirmacionInicioInspeccionDialog(
+    nombreActivo: String,
+    onConfirmar: () -> Unit,
+    onCancelar: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        icon = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Assignment,
+                contentDescription = "Iniciar Inspección",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Iniciar Inspección",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    text = "Vas a iniciar la inspección de:",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = nombreActivo,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "Recomendación:",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Es más valorable tomarse el tiempo necesario para realizar una inspección completa y detallada que hacerlo rápidamente.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "• Revisa cada punto cuidadosamente\n• Toma fotos de cualquier problema\n• Agrega comentarios detallados",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmar,
+                modifier = Modifier.fillMaxWidth(0.6f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Iniciar Inspección")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
 @Composable
 private fun AssetInfoCardWithHistory(
     activo: Activo,

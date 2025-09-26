@@ -43,9 +43,15 @@ class ChecklistViewModel : ViewModel() {
     private val _saveError = MutableStateFlow<String?>(null)
     val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
+    private val _timestampInicio = MutableStateFlow<Long?>(null)
+
     fun cargarPlantillaCompleta(templateId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
+            _timestampInicio.value = System.currentTimeMillis()
+
+            android.util.Log.d("ChecklistViewModel", "Iniciando inspección - Timestamp: ${_timestampInicio.value}")
+
             try {
                 val plantilla = plantillaRepository.obtenerPlantillaCompleta(templateId)
                 _plantillaCompleta.value = plantilla
@@ -106,6 +112,7 @@ class ChecklistViewModel : ViewModel() {
     fun clearSaveStates() {
         _saveSuccess.value = false
         _saveError.value = null
+        _timestampInicio.value = null
     }
 
     fun guardarChecklist(
@@ -116,64 +123,85 @@ class ChecklistViewModel : ViewModel() {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
+        if (!todasLasPreguntasRespondidas()) {
+            onError("Por favor completa todas las preguntas antes de enviar.")
+            return
+        }
+
         viewModelScope.launch {
             _isSaving.value = true
-            _saveError.value = null
-            _saveSuccess.value = false
+
             try {
-                // LOG: Ver qué respuestas tenemos
-                android.util.Log.d("ChecklistVM", "=== INICIANDO GUARDADO ===")
-                android.util.Log.d("ChecklistVM", "Total respuestas: ${_respuestas.value.size}")
-                // Preparar respuestas con fotos
-                val respuestasConFotos = _respuestas.value.values.mapNotNull { respuesta ->
-                    respuesta.respuesta?.let { resp ->
-                        RespuestaConFotos(
-                            respuesta = RespuestaReporte(
-                                reporteId = "", // Se asignará en el repositorio
-                                preguntaId = respuesta.preguntaId,
-                                respuesta = resp,
-                                comentario = respuesta.comentario.ifBlank { null }
-                            ),
-                            fotos = respuesta.fotos
-                        )
+                // Calcular duración
+                val timestampFin = System.currentTimeMillis()
+                val timestampInicio = _timestampInicio.value ?: timestampFin
+                val duracionMinutos = ((timestampFin - timestampInicio) / 1000 / 60).toInt()
+
+                android.util.Log.d("ChecklistViewModel", "⏰ Finalizando inspección:")
+                android.util.Log.d("ChecklistViewModel", "   Inicio: $timestampInicio")
+                android.util.Log.d("ChecklistViewModel", "   Fin: $timestampFin")
+                android.util.Log.d("ChecklistViewModel", "   Duración: $duracionMinutos minutos")
+
+                // 🆕 DEBUG DETALLADO DE RESPUESTAS
+                android.util.Log.d("ChecklistViewModel", "📋 PREPARANDO RESPUESTAS PARA ENVIAR:")
+                android.util.Log.d("ChecklistViewModel", "   Total respuestas en memoria: ${_respuestas.value.size}")
+
+                _respuestas.value.forEach { (preguntaId, item) ->
+                    val estado = if (item.respuesta == true) "✅ BUENO" else if (item.respuesta == false) "❌ MALO" else "❓ NULL"
+                    android.util.Log.d("ChecklistViewModel", "   - Pregunta $preguntaId: $estado")
+                    if (item.respuesta == false) {
+                        android.util.Log.d("ChecklistViewModel", "     Comentario: '${item.comentario}'")
+                    }
+                    if (item.fotos.isNotEmpty()) {
+                        android.util.Log.d("ChecklistViewModel", "     Fotos: ${item.fotos.size}")
                     }
                 }
 
-                android.util.Log.d("ChecklistVM", "Respuestas con fotos preparadas: ${respuestasConFotos.size}")
-                respuestasConFotos.forEach { rcf ->
-                    android.util.Log.d(
-                        "ChecklistVM",
-                        "  - Pregunta ${rcf.respuesta.preguntaId} tiene ${rcf.fotos.size} fotos"
+                // Convertir respuestas con fotos...
+                val respuestasConFotos = _respuestas.value.values.map { item ->
+                    RespuestaConFotos(
+                        respuesta = RespuestaReporte(
+                            preguntaId = item.preguntaId,
+                            reporteId = "", // Se asignará en el repository
+                            respuesta = item.respuesta ?: true,
+                            comentario = item.comentario.takeIf { it.isNotBlank() }
+                        ),
+                        fotos = item.fotos
                     )
                 }
 
-                val success = reporteRepository.crearReporteConFotos(
+                android.util.Log.d("ChecklistViewModel", "📤 ENVIANDO AL REPOSITORY:")
+                android.util.Log.d("ChecklistViewModel", "   Activo ID: $assetId")
+                android.util.Log.d("ChecklistViewModel", "   Usuario ID: $userId")
+                android.util.Log.d("ChecklistViewModel", "   Plantilla ID: $templateId")
+                android.util.Log.d("ChecklistViewModel", "   Respuestas: ${respuestasConFotos.size}")
+
+                // Llamar repository con timestamps
+                val exito = reporteRepository.crearReporteConTimestamps(
                     context = context,
                     activoId = assetId,
                     usuarioId = userId,
                     plantillaId = templateId,
-                    respuestasConFotos = respuestasConFotos
+                    respuestasConFotos = respuestasConFotos,
+                    timestampInicio = java.time.Instant.ofEpochMilli(timestampInicio).toString(),
+                    timestampFin = java.time.Instant.ofEpochMilli(timestampFin).toString(),
+                    duracionMinutos = duracionMinutos
                 )
 
-                android.util.Log.d("ChecklistVM", "Resultado guardado: $success")
+                android.util.Log.d("ChecklistViewModel", "📤 RESULTADO DEL REPOSITORY: ${if (exito) "✅ ÉXITO" else "❌ FALLÓ"}")
 
-
-                if (success) {
-                    android.util.Log.d("ChecklistVM", "Checklist guardado exitosamente")
-                    // Log de cuántas fotos se intentaron guardar
-                    val totalFotos = respuestasConFotos.sumOf { it.fotos.size }
-                    android.util.Log.d("ChecklistVM", "Total de fotos guardadas: $totalFotos")
+                if (exito) {
                     _saveSuccess.value = true
-                    _isSaving.value = false
-                    kotlinx.coroutines.delay(1500) // 1.5 segundos
                     onSuccess()
                 } else {
-                    onError("Error al guardar el checklist")
+                    onError("Error al guardar el checklist. Intenta nuevamente.")
                 }
+
             } catch (e: Exception) {
+                android.util.Log.e("ChecklistViewModel", "ERROR: ${e.message}", e)
+                onError("Error inesperado: ${e.message}")
+            } finally {
                 _isSaving.value = false
-                _saveError.value = "Error al guardar: ${e.message}"
-                onError("Error al guardar: ${e.message}")
             }
         }
     }
