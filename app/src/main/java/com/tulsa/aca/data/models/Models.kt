@@ -100,14 +100,21 @@ data class ReporteInspeccion(
     @SerialName("plantilla_id")
     val plantillaId: Int,
     @SerialName("timestamp_inicio")
-    val timestampInicio: String? = null,        // NUEVO - Cuando empieza checklist
-
+    val timestampInicio: String? = null,
     @SerialName("timestamp_completado")
-    val timestampCompletado: String? = null,    // Existente - Cuando termina
-
+    val timestampCompletado: String? = null,
     @SerialName("duracion_minutos")
-    val duracionMinutos: Int? = null,           // NUEVO - Calculado automáticamente
-    // Eliminado created_at por duplicidad con timestamp_completado
+    val duracionMinutos: Int? = null,
+
+    // ✅ NUEVOS CAMPOS CALCULADOS
+    @SerialName("tiene_problemas")
+    val tieneProblemas: Boolean = false,
+    @SerialName("total_respuestas")
+    val totalRespuestas: Int = 0,
+    @SerialName("respuestas_malas")
+    val respuestasMalas: Int = 0,
+    @SerialName("score_cumplimiento")
+    val scoreCumplimiento: Float = 100.0f
 )
 
 // URLs de fotos asociadas a respuestas

@@ -87,7 +87,8 @@ class SupervisorViewModel : ViewModel(), Cacheable {
     // CONSTANTES DE PAGINACIÓN
     companion object {
         private const val REPORTES_POR_PAGINA = 15
-        private const val CACHE_EXPIRY_MS = 3 * 60 * 1000L // 3 minutos
+        private const val CACHE_EXPIRY_MS = 60 * 1000L // ✅ 1 minuto
+        private const val CACHE_DETALLE_MS = 5 * 60 * 1000L // ✅ 5 min para volver de detalle
 
         // MÉTODOS LEGACY PARA COMPATIBILIDAD HACIA ATRÁS
         @Deprecated("Usar CacheManager.limpiarTodosLosCaches()", ReplaceWith("CacheManager.limpiarTodosLosCaches()"))
@@ -152,31 +153,39 @@ class SupervisorViewModel : ViewModel(), Cacheable {
     }
 
     /**
-     * MÉTODO PRINCIPAL OPTIMIZADO - Carga datos con caché inteligente
+     * MÉTODO PRINCIPAL OPTIMIZADO - Cache más inteligente
+     * ✅ REEMPLAZAR el método cargarDatosSupervisor existente
      */
-    fun cargarDatosSupervisor(forzarRecarga: Boolean = false) {
+    fun cargarDatosSupervisor(forzarRecarga: Boolean = false, volviendoDeDetalle: Boolean = false) {
         val ahora = System.currentTimeMillis()
         val cacheExpirado = esCacheExpirado()
+        val tiempoDesdeUltimaActualizacion = ahora - ultimaActualizacion.get()
 
-        // USAR CACHÉ SI ESTÁ FRESCO Y VÁLIDO
-        if (!forzarRecarga &&
-            datosYaCargados.get() &&
-            ultimaCargaExitosa.get() &&
-            !cacheExpirado &&
-            _uiState.value.reportes.isNotEmpty() &&
-            _uiState.value.error == null &&
-            !_uiState.value.isLoading) {
+        // ✅ CACHE MEJORADO - Considerar si viene de detalle
+        val usarCache = !forzarRecarga &&
+                datosYaCargados.get() &&
+                ultimaCargaExitosa.get() &&
+                _uiState.value.reportes.isNotEmpty() &&
+                _uiState.value.error == null &&
+                !_uiState.value.isLoading &&
+                ((!cacheExpirado) || (volviendoDeDetalle && tiempoDesdeUltimaActualizacion < CACHE_DETALLE_MS))
 
-            android.util.Log.d("SupervisorVM", "Usando datos cacheados (${(ahora - ultimaActualizacion.get())/1000}s antiguos)")
+        if (usarCache) {
+            val tipoCache = when {
+                volviendoDeDetalle -> "volviendo de detalle"
+                cacheExpirado -> "cache expirado pero válido para detalle"
+                else -> "cache válido"
+            }
+            android.util.Log.d("SupervisorVM", "✅ Usando datos cacheados ($tipoCache) - ${tiempoDesdeUltimaActualizacion/1000}s antiguos")
             return
         }
 
         val tipoRecarga = when {
             forzarRecarga -> "forzada"
-            cacheExpirado -> "por expiración (${(ahora - ultimaActualizacion.get())/1000}s)"
+            cacheExpirado && !volviendoDeDetalle -> "por expiración (${tiempoDesdeUltimaActualizacion/1000}s)"
             else -> "inicial"
         }
-        android.util.Log.d("SupervisorVM", "Cargando datos frescos - Razón: $tipoRecarga")
+        android.util.Log.d("SupervisorVM", "🔄 Cargando datos frescos - Razón: $tipoRecarga")
 
         datosYaCargados.set(true)
         ultimaCargaExitosa.set(false)
@@ -185,6 +194,8 @@ class SupervisorViewModel : ViewModel(), Cacheable {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
+                val startTime = System.currentTimeMillis()
+
                 // Cargar activos
                 val activos = activoRepository.obtenerTodosLosActivos()
 
@@ -192,7 +203,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                 val usuarios = usuarioRepository.obtenerTodosLosUsuarios()
                 val operadores = usuarios.filter { it.rol == "OPERADOR" }
 
-                // Cargar todos los reportes CON INFORMACIÓN COMPLETA
+                // ✅ CARGAR REPORTES OPTIMIZADO - Los problemas ya vienen calculados
                 val reportesTotales = mutableListOf<ReporteCompleto>()
 
                 activos.forEach { activo ->
@@ -211,7 +222,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                                 usuario = usuario,
                                 activo = activo,
                                 plantilla = plantilla,
-                                tieneProblemas = false // Se calcula después
+                                tieneProblemas = reporte.tieneProblemas // ⭐ Ya viene calculado desde BD!
                             )
                         )
                     }
@@ -222,18 +233,17 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                     it.reporte.timestampCompletado
                 }
 
-                // CALCULAR CUÁLES TIENEN PROBLEMAS
-                val reportesConProblemas = calcularReportesConProblemas(reportesOrdenados)
+                // ✅ YA NO NECESITAMOS calcularReportesConProblemas() - Datos ya vienen listos!
 
                 // THREAD-SAFE ASSIGNMENT
                 synchronized(this@SupervisorViewModel) {
-                    todosLosReportes = reportesConProblemas
-                    reportesFiltrados = todosLosReportes // Inicialmente sin filtros
+                    todosLosReportes = reportesOrdenados
+                    reportesFiltrados = todosLosReportes
                 }
 
-                val estadisticas = calcularEstadisticas(todosLosReportes)
+                val estadisticas = calcularEstadisticasOptimizado(todosLosReportes)
 
-                // APLICAR PAGINACIÓN INICIAL (primeros 15)
+                // APLICAR PAGINACIÓN INICIAL
                 val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
 
                 _uiState.value = _uiState.value.copy(
@@ -250,7 +260,9 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                 ultimaActualizacion.set(ahora)
                 ultimaCargaExitosa.set(true)
 
-                android.util.Log.d("SupervisorVM", "Datos cargados: ${reportesTotales.size} reportes totales, ${reportesPaginados.size} mostrados inicialmente")
+                val endTime = System.currentTimeMillis()
+                val duracion = endTime - startTime
+                android.util.Log.d("SupervisorVM", "✅ Datos cargados en ${duracion}ms: ${reportesTotales.size} reportes totales, ${reportesPaginados.size} mostrados inicialmente")
 
             } catch (e: Exception) {
                 android.util.Log.e("SupervisorVM", "Error cargando datos: ${e.message}", e)
@@ -261,6 +273,147 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                 ultimaCargaExitosa.set(false)
             }
         }
+    }
+
+    /**
+     * ✅ AGREGAR MÉTODO NUEVO - Para cuando vuelve de ReportDetails
+     */
+    fun cargarDatosDesdeDetalle() {
+        cargarDatosSupervisor(forzarRecarga = false, volviendoDeDetalle = true)
+    }
+
+    /**
+     * ✅ REEMPLAZAR el método filtrarReportes existente
+     */
+    private fun filtrarReportesOptimizado(
+        reportes: List<ReporteCompleto>,
+        filtros: FiltrosReporte
+    ): List<ReporteCompleto> {
+        return reportes.filter { reporteCompleto ->
+            val reporte = reporteCompleto.reporte
+
+            // Filtro por activo
+            if (filtros.activoSeleccionado != null &&
+                reporte.activoId != filtros.activoSeleccionado.id) {
+                return@filter false
+            }
+
+            // Filtro por operador
+            if (filtros.operadorSeleccionado != null &&
+                reporte.usuarioId != filtros.operadorSeleccionado.id) {
+                return@filter false
+            }
+
+            // ✅ FILTRO "Solo con problemas" SÚPER RÁPIDO
+            if (filtros.soloConProblemas && !reporte.tieneProblemas) {
+                return@filter false
+            }
+
+            // Filtros de fecha (sin cambios)
+            reporte.timestampCompletado?.let { timestampStr ->
+                try {
+                    val reporteDate = DateUtils.parseTimestamp(timestampStr)
+
+                    filtros.fechaDesde?.let { fechaDesde ->
+                        val fechaDesdeStartOfDay = Calendar.getInstance().apply {
+                            time = fechaDesde
+                            set(Calendar.HOUR_OF_DAY, 0)
+                            set(Calendar.MINUTE, 0)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }.time
+
+                        if (reporteDate.before(fechaDesdeStartOfDay)) {
+                            return@filter false
+                        }
+                    }
+
+                    filtros.fechaHasta?.let { fechaHasta ->
+                        val fechaHastaEndOfDay = Calendar.getInstance().apply {
+                            time = fechaHasta
+                            set(Calendar.HOUR_OF_DAY, 23)
+                            set(Calendar.MINUTE, 59)
+                            set(Calendar.SECOND, 59)
+                            set(Calendar.MILLISECOND, 999)
+                        }.time
+
+                        if (reporteDate.after(fechaHastaEndOfDay)) {
+                            return@filter false
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    android.util.Log.e("SupervisorVM", "Error parseando fecha: ${e.message}")
+                }
+            }
+
+            true
+        }
+    }
+
+    /**
+     * ✅ REEMPLAZAR el método calcularEstadisticas existente
+     */
+    private suspend fun calcularEstadisticasOptimizado(reportes: List<ReporteCompleto>): EstadisticasSupervisor {
+        val hoy = Calendar.getInstance()
+        val inicioSemana = Calendar.getInstance().apply {
+            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        var reportesHoy = 0
+        var reportesEstaSemana = 0
+        val activosSet = mutableSetOf<Int>()
+
+        // ✅ CONTAR REPORTES CON PROBLEMAS SÚPER RÁPIDO
+        val reportesConProblemas = reportes.count { it.reporte.tieneProblemas }
+
+        reportes.forEach { reporteCompleto ->
+            val reporte = reporteCompleto.reporte
+
+            // Agregar activo al set
+            activosSet.add(reporte.activoId)
+
+            // Contar reportes por fecha
+            reporte.timestampCompletado?.let { timestamp ->
+                try {
+                    val reporteDate = DateUtils.parseTimestamp(timestamp)
+
+                    // Verificar si es de hoy
+                    val esDeHoy = Calendar.getInstance().apply {
+                        time = reporteDate
+                    }.get(Calendar.DAY_OF_YEAR) == hoy.get(Calendar.DAY_OF_YEAR) &&
+                            Calendar.getInstance().apply {
+                                time = reporteDate
+                            }.get(Calendar.YEAR) == hoy.get(Calendar.YEAR)
+
+                    if (esDeHoy) {
+                        reportesHoy++
+                    }
+
+                    // Verificar si es de esta semana
+                    if (reporteDate.after(inicioSemana.time) || reporteDate.equals(inicioSemana.time)) {
+                        reportesEstaSemana++
+                    }
+
+                } catch (e: Exception) {
+                    android.util.Log.w("SupervisorVM", "Error parseando fecha para estadísticas: ${e.message}")
+                }
+            }
+        }
+
+        android.util.Log.d("SupervisorVM", "📊 Estadísticas calculadas: Total=${reportes.size}, Hoy=$reportesHoy, Semana=$reportesEstaSemana, ConProblemas=$reportesConProblemas")
+
+        return EstadisticasSupervisor(
+            totalReportes = reportes.size,
+            reportesHoy = reportesHoy,
+            reportesEstaSemana = reportesEstaSemana,
+            activosInspeccionados = activosSet.size,
+            reportesConProblemas = reportesConProblemas
+        )
     }
 
     /**
@@ -315,7 +468,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
 
         // Thread-safe filtering
         val nuevosReportesFiltrados = synchronized(this) {
-            filtrarReportes(todosLosReportes, filtros)
+            filtrarReportesOptimizado(todosLosReportes, filtros) // ✅ Usar método optimizado
         }
 
         reportesFiltrados = nuevosReportesFiltrados
@@ -372,168 +525,5 @@ class SupervisorViewModel : ViewModel(), Cacheable {
      */
     fun obtenerInfoCacheInstancia(): String {
         return obtenerInfoCache()
-    }
-
-    // ===============================
-    // MÉTODOS PRIVADOS AUXILIARES
-    // ===============================
-
-    /**
-     * FUNCIÓN DE FILTROS - Thread-safe
-     */
-    private fun filtrarReportes(
-        reportes: List<ReporteCompleto>,
-        filtros: FiltrosReporte
-    ): List<ReporteCompleto> {
-        return reportes.filter { reporteCompleto ->
-            val reporte = reporteCompleto.reporte
-
-            // Filtro por activo
-            if (filtros.activoSeleccionado != null &&
-                reporte.activoId != filtros.activoSeleccionado.id) {
-                return@filter false
-            }
-
-            // Filtro por operador
-            if (filtros.operadorSeleccionado != null &&
-                reporte.usuarioId != filtros.operadorSeleccionado.id) {
-                return@filter false
-            }
-
-            // Filtro "Solo con problemas"
-            if (filtros.soloConProblemas && !reporteCompleto.tieneProblemas) {
-                return@filter false
-            }
-
-            // Filtros de fecha
-            reporte.timestampCompletado?.let { timestampStr ->
-                try {
-                    // Parsear la fecha del reporte
-                    val reporteDate = DateUtils.parseTimestamp(timestampStr)
-
-                    // Filtro fecha desde
-                    filtros.fechaDesde?.let { fechaDesde ->
-                        val fechaDesdeStartOfDay = Calendar.getInstance().apply {
-                            time = fechaDesde
-                            set(Calendar.HOUR_OF_DAY, 0)
-                            set(Calendar.MINUTE, 0)
-                            set(Calendar.SECOND, 0)
-                            set(Calendar.MILLISECOND, 0)
-                        }.time
-
-                        if (reporteDate.before(fechaDesdeStartOfDay)) {
-                            return@filter false
-                        }
-                    }
-
-                    // Filtro fecha hasta
-                    filtros.fechaHasta?.let { fechaHasta ->
-                        val fechaHastaEndOfDay = Calendar.getInstance().apply {
-                            time = fechaHasta
-                            set(Calendar.HOUR_OF_DAY, 23)
-                            set(Calendar.MINUTE, 59)
-                            set(Calendar.SECOND, 59)
-                            set(Calendar.MILLISECOND, 999)
-                        }.time
-
-                        if (reporteDate.after(fechaHastaEndOfDay)) {
-                            return@filter false
-                        }
-                    }
-
-                } catch (e: Exception) {
-                    android.util.Log.e("SupervisorVM", "Error parseando fecha: ${e.message}")
-                    // Si hay error parseando, incluir el reporte (no filtrar por fecha)
-                }
-            }
-
-            true
-        }
-    }
-
-    /**
-     * FUNCIÓN PARA CALCULAR REPORTES CON PROBLEMAS
-     */
-    private suspend fun calcularReportesConProblemas(reportes: List<ReporteCompleto>): List<ReporteCompleto> {
-        if (reportes.isEmpty()) return reportes
-
-        try {
-            // Obtener IDs de todos los reportes
-            val reporteIds = reportes.mapNotNull { it.reporte.id }
-
-            // UNA SOLA LLAMADA para verificar todos los reportes con problemas
-            val reportesConProblemasMap = reporteRepository.verificarReportesConProblemas(reporteIds)
-
-            // Actualizar cada reporte con su estado de problemas
-            return reportes.map { reporteCompleto ->
-                val tieneProblemas = reportesConProblemasMap[reporteCompleto.reporte.id] ?: false
-                reporteCompleto.copy(tieneProblemas = tieneProblemas)
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("SupervisorVM", "Error calculando reportes con problemas: ${e.message}", e)
-            return reportes // Devolver sin modificar si hay error
-        }
-    }
-
-    private suspend fun calcularEstadisticas(reportes: List<ReporteCompleto>): EstadisticasSupervisor {
-        val hoy = Calendar.getInstance()
-        val inicioSemana = Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-        var reportesHoy = 0
-        var reportesEstaSemana = 0
-        val activosSet = mutableSetOf<Int>()
-
-        // Contar reportes con problemas usando el campo calculado
-        val reportesConProblemas = reportes.count { it.tieneProblemas }
-
-        reportes.forEach { reporteCompleto ->
-            val reporte = reporteCompleto.reporte
-
-            // Agregar activo al set
-            activosSet.add(reporte.activoId)
-
-            // Contar reportes por fecha (implementación básica mejorable)
-            reporte.timestampCompletado?.let { timestamp ->
-                try {
-                    val reporteDate = DateUtils.parseTimestamp(timestamp)
-
-                    // Verificar si es de hoy
-                    val esDeHoy = Calendar.getInstance().apply {
-                        time = reporteDate
-                    }.get(Calendar.DAY_OF_YEAR) == hoy.get(Calendar.DAY_OF_YEAR) &&
-                            Calendar.getInstance().apply {
-                                time = reporteDate
-                            }.get(Calendar.YEAR) == hoy.get(Calendar.YEAR)
-
-                    if (esDeHoy) {
-                        reportesHoy++
-                    }
-
-                    // Verificar si es de esta semana
-                    if (reporteDate.after(inicioSemana.time) || reporteDate.equals(inicioSemana.time)) {
-                        reportesEstaSemana++
-                    }
-
-                } catch (e: Exception) {
-                    android.util.Log.w("SupervisorVM", "Error parseando fecha para estadísticas: ${e.message}")
-                }
-            }
-        }
-
-        android.util.Log.d("SupervisorVM", "Estadísticas: Total=${reportes.size}, Hoy=$reportesHoy, Semana=$reportesEstaSemana, ConProblemas=$reportesConProblemas")
-
-        return EstadisticasSupervisor(
-            totalReportes = reportes.size,
-            reportesHoy = reportesHoy,
-            reportesEstaSemana = reportesEstaSemana,
-            activosInspeccionados = activosSet.size,
-            reportesConProblemas = reportesConProblemas
-        )
     }
 }

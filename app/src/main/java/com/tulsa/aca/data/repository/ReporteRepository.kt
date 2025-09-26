@@ -219,7 +219,8 @@ class ReporteRepository {
         }
     }
     // Actualizar en ReporteRepository.kt
-    suspend fun verificarReportesConProblemas(reporteIds: List<String>): Map<String, Boolean> {
+    // YA NO SE NECESITA - Los problemas vienen calculados desde BD
+    /* suspend fun verificarReportesConProblemas(reporteIds: List<String>): Map<String, Boolean> {
         if (reporteIds.isEmpty()) return emptyMap()
 
         android.util.Log.d("ReporteRepository", "🔍 VERIFICANDO PROBLEMAS para ${reporteIds.size} reportes:")
@@ -276,6 +277,7 @@ class ReporteRepository {
             emptyMap()
         }
     }
+    */
     suspend fun crearReporteConTimestamps(
         context: Context,
         activoId: Int,

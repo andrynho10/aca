@@ -49,8 +49,8 @@ fun SupervisorPanelScreen(
     var showFilters by remember { mutableStateOf(false) }
 
     // Cargar datos al inicializar
-    LaunchedEffect(Unit) {
-        supervisorViewModel.cargarDatosSupervisor()
+    LaunchedEffect(key1 = Unit) {
+        supervisorViewModel.cargarDatosDesdeDetalle()
     }
 
     // Manejo de errores
