@@ -1,13 +1,16 @@
 package com.tulsa.aca.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,8 +20,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.R
 import com.tulsa.aca.data.session.UserSession
+import com.tulsa.aca.viewmodel.HorometroViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +31,7 @@ fun HomeScreen(
     onNavigateToAssetList: () -> Unit,
     onNavigateToQRScanner: () -> Unit,
     onNavigateToSupervisorPanel: () -> Unit,
+    onNavigateToHorometrosPendientes: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -165,6 +171,59 @@ fun HomeScreen(
                     }
                 }
             } else {
+                val horometroViewModel: HorometroViewModel = viewModel()
+                val horometroUiState by horometroViewModel.uiState.collectAsState()
+
+                LaunchedEffect(Unit) {
+                    horometroViewModel.cargarPendientes()
+                }
+
+                if (horometroUiState.pendientes.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                            .clickable {
+                                // Navegar a la pantalla de pendientes
+                                onNavigateToHorometrosPendientes()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = "Pendiente",
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "⚠️ Horómetros Pendientes",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    "Tienes ${horometroUiState.pendientes.size} horómetros por cerrar",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Ir",
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
                 // VISTA PARA OPERADORES - Opciones de inspección
                 Text(
                     text = "Selecciona cómo quieres identificar la grúa:",

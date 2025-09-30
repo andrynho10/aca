@@ -154,7 +154,6 @@ class SupervisorViewModel : ViewModel(), Cacheable {
 
     /**
      * MÉTODO PRINCIPAL OPTIMIZADO - Cache más inteligente
-     * ✅ REEMPLAZAR el método cargarDatosSupervisor existente
      */
     fun cargarDatosSupervisor(forzarRecarga: Boolean = false, volviendoDeDetalle: Boolean = false) {
         val ahora = System.currentTimeMillis()

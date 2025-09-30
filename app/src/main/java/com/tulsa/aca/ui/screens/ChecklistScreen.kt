@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,6 +60,9 @@ fun ChecklistScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showHorometroDialog by remember { mutableStateOf(false) }
+    var horometroInput by remember { mutableStateOf("") }
+    var turnoSeleccionado by remember { mutableStateOf<Int?>(null) }
 
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
@@ -107,6 +111,103 @@ fun ChecklistScreen(
             android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
             errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
         }
+    }
+
+    // NUEVO: Dialog para capturar horómetro
+    if (showHorometroDialog) {
+        AlertDialog(
+            onDismissRequest = { showHorometroDialog = false },
+            title = {
+                Text("Información de la Inspección")
+            },
+            text = {
+                Column {
+                    Text(
+                        "Por favor, ingresa el horómetro inicial y selecciona el turno",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Input horómetro
+                    OutlinedTextField(
+                        value = horometroInput,
+                        onValueChange = {
+                            if (it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                horometroInput = it
+                            }
+                        },
+                        label = { Text("Horómetro Inicial (opcional)") },
+                        placeholder = { Text("Ej: 1234.5") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        "Turno (opcional):",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Selección de turno
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(
+                            1 to "Noche",
+                            2 to "Mañana",
+                            3 to "Tarde"
+                        ).forEach { (numero, nombre) ->
+                            FilterChip(
+                                selected = turnoSeleccionado == numero,
+                                onClick = {
+                                    turnoSeleccionado = if (turnoSeleccionado == numero) null else numero
+                                },
+                                label = { Text("T$numero: $nombre") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "Nota: Si ingresas el horómetro inicial, deberás cerrarlo después de completar la inspección.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Guardar horómetro y turno en el ViewModel
+                        val horometro = horometroInput.toFloatOrNull()
+                        viewModel.actualizarHorometroInicial(horometro)
+                        viewModel.actualizarTurno(turnoSeleccionado)
+
+                        // Cerrar este diálogo y mostrar confirmación
+                        showHorometroDialog = false
+                        showConfirmDialog = true
+                    }
+                ) {
+                    Text("Continuar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showHorometroDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     // DIALOG DE CONFIRMACIÓN
@@ -290,7 +391,7 @@ fun ChecklistScreen(
                             Button(
                                 onClick = {
                                     if (todasRespondidas && !isSaving) {
-                                        showConfirmDialog = true // MOSTRAR CONFIRMACIÓN
+                                        showHorometroDialog = true
                                     }
                                 },
                                 enabled = todasRespondidas && !isSaving,

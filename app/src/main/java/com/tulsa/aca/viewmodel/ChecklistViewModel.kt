@@ -44,6 +44,30 @@ class ChecklistViewModel : ViewModel() {
     val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
     private val _timestampInicio = MutableStateFlow<Long?>(null)
+    private val _horometroInicial = MutableStateFlow<Float?>(null)
+    val horometroInicial: StateFlow<Float?> = _horometroInicial.asStateFlow()
+
+    private val _turnoActual = MutableStateFlow<Int?>(null)
+    val turnoActual: StateFlow<Int?> = _turnoActual.asStateFlow()
+
+    fun actualizarHorometroInicial(horometro: Float?) {
+        _horometroInicial.value = horometro
+        android.util.Log.d("ChecklistViewModel", "Horómetro inicial actualizado: $horometro")
+    }
+
+    fun actualizarTurno(turno: Int?) {
+        _turnoActual.value = turno
+        android.util.Log.d("ChecklistViewModel", "Turno actualizado: $turno")
+    }
+
+    // ========== MODIFICAR LA FUNCIÓN clearSaveStates() ==========
+    fun clearSaveStates() {
+        _saveSuccess.value = false
+        _saveError.value = null
+        _timestampInicio.value = null
+        _horometroInicial.value = null  // ⭐ AGREGAR
+        _turnoActual.value = null        // ⭐ AGREGAR
+    }
 
     fun cargarPlantillaCompleta(templateId: Int) {
         viewModelScope.launch {
@@ -108,13 +132,6 @@ class ChecklistViewModel : ViewModel() {
         }
     }
 
-    // FUNCIÓN PARA LIMPIAR ESTADOS
-    fun clearSaveStates() {
-        _saveSuccess.value = false
-        _saveError.value = null
-        _timestampInicio.value = null
-    }
-
     fun guardarChecklist(
         assetId: Int,
         userId: String,
@@ -176,8 +193,8 @@ class ChecklistViewModel : ViewModel() {
                 android.util.Log.d("ChecklistViewModel", "   Plantilla ID: $templateId")
                 android.util.Log.d("ChecklistViewModel", "   Respuestas: ${respuestasConFotos.size}")
 
-                // Llamar repository con timestamps
-                val exito = reporteRepository.crearReporteConTimestamps(
+                // Llamar repository con horómetro y turno
+                val exito = reporteRepository.crearReporteConTimestampsYHorometro(
                     context = context,
                     activoId = assetId,
                     usuarioId = userId,
@@ -185,7 +202,9 @@ class ChecklistViewModel : ViewModel() {
                     respuestasConFotos = respuestasConFotos,
                     timestampInicio = java.time.Instant.ofEpochMilli(timestampInicio).toString(),
                     timestampFin = java.time.Instant.ofEpochMilli(timestampFin).toString(),
-                    duracionMinutos = duracionMinutos
+                    duracionMinutos = duracionMinutos,
+                    horometroInicial = _horometroInicial.value,
+                    turno = _turnoActual.value
                 )
 
                 android.util.Log.d("ChecklistViewModel", "📤 RESULTADO DEL REPOSITORY: ${if (exito) "✅ ÉXITO" else "❌ FALLÓ"}")

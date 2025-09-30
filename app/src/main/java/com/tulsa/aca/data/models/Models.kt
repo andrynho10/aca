@@ -13,7 +13,14 @@ data class Activo(
     @SerialName("codigo_qr")
     val codigoQr: String,
     @SerialName("created_at")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    // NUEVOS CAMPOS
+    @SerialName("es_operativa")
+    val esOperativa: Boolean = true,
+    @SerialName("es_standby")
+    val esStandby: Boolean = false,
+    @SerialName("horometro_actual")
+    val horometroActual: Float? = null
 )
 
 // Representa a un usuario de la aplicación
@@ -106,7 +113,7 @@ data class ReporteInspeccion(
     @SerialName("duracion_minutos")
     val duracionMinutos: Int? = null,
 
-    // ✅ NUEVOS CAMPOS CALCULADOS
+    // NUEVOS CAMPOS CALCULADOS
     @SerialName("tiene_problemas")
     val tieneProblemas: Boolean = false,
     @SerialName("total_respuestas")
@@ -114,7 +121,18 @@ data class ReporteInspeccion(
     @SerialName("respuestas_malas")
     val respuestasMalas: Int = 0,
     @SerialName("score_cumplimiento")
-    val scoreCumplimiento: Float = 100.0f
+    val scoreCumplimiento: Float = 100.0f,
+
+    // NUEVOS CAMPOS DE HORÓMETRO
+    val turno: Int? = null,
+    @SerialName("horometro_inicial")
+    val horometroInicial: Float? = null,
+    @SerialName("horometro_final")
+    val horometroFinal: Float? = null,
+    @SerialName("horometro_pendiente")
+    val horometroPendiente: Boolean = false,
+    @SerialName("horas_uso")
+    val horasUso: Float? = null
 )
 
 // URLs de fotos asociadas a respuestas
@@ -127,4 +145,57 @@ data class FotoRespuesta(
     val urlStorage: String,
     @SerialName("created_at")
     val createdAt: String? = null
+)
+// NUEVO MODELO Horómetro Pendiente
+@Serializable
+data class HorometroPendiente(
+    @SerialName("reporte_id")
+    val reporteId: String,
+    val grua: String,
+    val operador: String,
+    @SerialName("horometro_inicial")
+    val horometroInicial: Float,
+    @SerialName("timestamp_completado")
+    val timestampCompletado: String,
+    val turno: Int?,
+    @SerialName("horas_desde_reporte")
+    val horasDesdeReporte: Double
+)
+// NUEVO MODELO Dashboard Optimizado
+@Serializable
+data class DashboardData(
+    @SerialName("tipo_metrica")
+    val tipoMetrica: String,
+    val valor: kotlinx.serialization.json.JsonElement
+)
+// NUEVO MODELO Estadísticas Generales (desde vista materializada)
+@Serializable
+data class EstadisticasGenerales(
+    @SerialName("total_reportes")
+    val totalReportes: Int,
+    @SerialName("total_activos")
+    val totalActivos: Int,
+    @SerialName("score_promedio_global")
+    val scorePromedioGlobal: Float,
+    @SerialName("reportes_con_problemas")
+    val reportesConProblemas: Int,
+    @SerialName("porcentaje_con_problemas")
+    val porcentajeConProblemas: Float,
+    @SerialName("horas_uso_total")
+    val horasUsoTotal: Float
+)
+
+// NUEVO MODELO Top Problemas
+@Serializable
+data class TopProblema(
+    @SerialName("pregunta_id")
+    val preguntaId: Int,
+    @SerialName("texto_pregunta")
+    val textoPregunta: String,
+    @SerialName("total_respuestas")
+    val totalRespuestas: Int,
+    @SerialName("total_fallo")
+    val totalFallo: Int,
+    @SerialName("porcentaje_fallo")
+    val porcentajeFallo: Float
 )

@@ -23,9 +23,11 @@ import com.tulsa.aca.ui.navigation.Screen
 import com.tulsa.aca.ui.screens.ActivosCrudScreen
 import com.tulsa.aca.ui.screens.AssetHistoryScreen
 import com.tulsa.aca.ui.screens.AssetListScreen
+import com.tulsa.aca.ui.screens.CerrarHorometroScreen
 import com.tulsa.aca.ui.screens.ChecklistScreen
 import com.tulsa.aca.ui.screens.ChecklistSelectionScreen
 import com.tulsa.aca.ui.screens.HomeScreen
+import com.tulsa.aca.ui.screens.HorometrosPendientesScreen
 import com.tulsa.aca.ui.screens.LoginScreen
 import com.tulsa.aca.ui.screens.PhotoViewerScreen
 import com.tulsa.aca.ui.screens.PlantillaEditorScreen
@@ -85,12 +87,13 @@ fun ACAApp(
                 onNavigateToSupervisorPanel = {
                     navController.navigate(Screen.SupervisorPanel.route)
                 },
+                onNavigateToHorometrosPendientes = {
+                    navController.navigate(Screen.HorometrosPendientes.route)
+                },
                 onLogout = {
                     scope.launch {
                         val logoutExitoso = UserSession.logoutCompleto()
 
-                        // Navegar independientemente del resultado
-                        // (porque siempre se limpia la sesión local)
                         navController.navigate(Screen.Login.route) {
                             popUpTo(0) { inclusive = true }
                         }
@@ -272,6 +275,31 @@ fun ACAApp(
             PhotoViewerScreen(
                 photos = photos,
                 initialIndex = initialIndex,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        // ⭐ NUEVAS RUTAS: Horómetros Pendientes
+        composable(Screen.HorometrosPendientes.route) {
+            HorometrosPendientesScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToCerrar = { reporteId ->
+                    navController.navigate(Screen.CerrarHorometro.createRoute(reporteId))
+                }
+            )
+        }
+
+        // ⭐ NUEVA RUTA: Cerrar Horómetro
+        composable(
+            route = Screen.CerrarHorometro.route,
+            arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val reporteId = backStackEntry.arguments?.getString("reporteId") ?: ""
+            CerrarHorometroScreen(
+                reporteId = reporteId,
                 onNavigateBack = {
                     navController.popBackStack()
                 }

@@ -32,4 +32,10 @@ sealed class Screen(val route: String) {
             return "photo_viewer/$photosEncoded/$initialIndex"
         }
     }
+    // NUEVAS RUTAS PARA HORÓMETROS
+    object HorometrosPendientes : Screen("horometros_pendientes")
+
+    object CerrarHorometro : Screen("cerrar_horometro/{reporteId}") {
+        fun createRoute(reporteId: String) = "cerrar_horometro/$reporteId"
+    }
 }
