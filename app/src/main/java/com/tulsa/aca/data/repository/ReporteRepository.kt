@@ -408,7 +408,7 @@ class ReporteRepository {
                 timestampCompletado = timestampFin,
                 duracionMinutos = duracionMinutos,
                 horometroInicial = horometroInicial,
-                turno = turno,
+                turno = null,
                 horometroPendiente = horometroInicial != null // Si hay horómetro inicial, queda pendiente
             )
 

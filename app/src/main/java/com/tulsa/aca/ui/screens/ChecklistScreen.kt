@@ -62,7 +62,6 @@ fun ChecklistScreen(
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showHorometroDialog by remember { mutableStateOf(false) }
     var horometroInput by remember { mutableStateOf("") }
-    var turnoSeleccionado by remember { mutableStateOf<Int?>(null) }
 
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
@@ -113,23 +112,22 @@ fun ChecklistScreen(
         }
     }
 
-    // NUEVO: Dialog para capturar horómetro
+    // Dialog para capturar horómetro
     if (showHorometroDialog) {
         AlertDialog(
             onDismissRequest = { showHorometroDialog = false },
             title = {
-                Text("Información de la Inspección")
+                Text("Horómetro Inicial")
             },
             text = {
                 Column {
                     Text(
-                        "Por favor, ingresa el horómetro inicial y selecciona el turno",
+                        "¿Deseas registrar el horómetro inicial de la grúa?",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Input horómetro
                     OutlinedTextField(
                         value = horometroInput,
                         onValueChange = {
@@ -143,58 +141,50 @@ fun ChecklistScreen(
                             keyboardType = KeyboardType.Decimal
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        "Turno (opcional):",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
+                        singleLine = true,
+                        supportingText = {
+                            Text(
+                                "Si ingresas el horómetro, deberás cerrarlo después de la inspección.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Selección de turno
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     ) {
-                        listOf(
-                            1 to "Noche",
-                            2 to "Mañana",
-                            3 to "Tarde"
-                        ).forEach { (numero, nombre) ->
-                            FilterChip(
-                                selected = turnoSeleccionado == numero,
-                                onClick = {
-                                    turnoSeleccionado = if (turnoSeleccionado == numero) null else numero
-                                },
-                                label = { Text("T$numero: $nombre") },
-                                modifier = Modifier.weight(1f)
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "El turno se detectará automáticamente según la hora actual",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        "Nota: Si ingresas el horómetro inicial, deberás cerrarlo después de completar la inspección.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        // Guardar horómetro y turno en el ViewModel
+                        // Guardar solo el horómetro (turno se calcula en backend)
                         val horometro = horometroInput.toFloatOrNull()
                         viewModel.actualizarHorometroInicial(horometro)
-                        viewModel.actualizarTurno(turnoSeleccionado)
+                        viewModel.actualizarTurno(null) // ⭐ NULL - se calcula en SQL
 
-                        // Cerrar este diálogo y mostrar confirmación
                         showHorometroDialog = false
                         showConfirmDialog = true
                     }
@@ -203,8 +193,16 @@ fun ChecklistScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showHorometroDialog = false }) {
-                    Text("Cancelar")
+                TextButton(
+                    onClick = {
+                        // Saltar el horómetro y continuar sin él
+                        viewModel.actualizarHorometroInicial(null)
+                        viewModel.actualizarTurno(null)
+                        showHorometroDialog = false
+                        showConfirmDialog = true
+                    }
+                ) {
+                    Text("Omitir")
                 }
             }
         )
