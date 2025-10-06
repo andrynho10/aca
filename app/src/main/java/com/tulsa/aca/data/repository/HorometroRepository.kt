@@ -44,10 +44,10 @@ class HorometroRepository {
     ): ResultadoValidacion {
         return try {
             android.util.Log.d("HorometroRepo", """
-            🔍 Validando horómetro inicial:
-            - Activo: $activoId
-            - Horómetro inicial: $horometroInicial
-        """.trimIndent())
+                🔍 Validando horómetro inicial:
+                - Activo: $activoId
+                - Horómetro inicial: $horometroInicial
+            """.trimIndent())
 
             val params = buildJsonObject {
                 put("p_activo_id", activoId)
@@ -81,19 +81,21 @@ class HorometroRepository {
                     ultimoHorometro = ultimoHorometro
                 )
             } else {
-                android.util.Log.e("HorometroRepo", "❌ Horómetro inicial inválido: $error")
+                val errorLimpio = limpiarMensajeError(error) // Limpiar error
+                android.util.Log.e("HorometroRepo", "❌ Horómetro inicial inválido: $errorLimpio")
                 ResultadoValidacion(
                     valido = false,
                     ultimoHorometro = ultimoHorometro,
-                    error = error
+                    error = errorLimpio
                 )
             }
 
         } catch (e: Exception) {
-            android.util.Log.e("HorometroRepo", "❌ Error validando: ${e.message}", e)
+            val errorLimpio = limpiarMensajeError(e.message) // Limpiar error
+            android.util.Log.e("HorometroRepo", "❌ Error validando: $errorLimpio", e)
             ResultadoValidacion(
                 valido = false,
-                error = "Error de conexión: ${e.message}"
+                error = errorLimpio
             )
         }
     }
@@ -165,6 +167,25 @@ class HorometroRepository {
             android.util.Log.e("HorometroRepo", "❌ Error obteniendo info: ${e.message}", e)
             null
         }
+    }
+
+    /**
+     * Limpiar mensajes de error de URLs y detalles técnicos
+     */
+
+    private fun limpiarMensajeError(mensaje: String?): String {
+        if (mensaje == null) return "Error desconocido"
+
+        // Eliminar URLs (cualquier cosa que empiece con http:// o https://)
+        var limpio = mensaje.replace(Regex("https?://[^\\s]+"), "")
+
+        // Eliminar "URL:" y lo que sigue
+        limpio = limpio.substringBefore("URL:")
+
+        // Eliminar espacios extra
+        limpio = limpio.trim()
+
+        return limpio.ifEmpty { "Error al procesar la solicitud" }
     }
 
     /**
