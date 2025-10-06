@@ -108,10 +108,11 @@ fun HomeScreen(
                 painter = painterResource(id = R.drawable.logo_empresa),
                 contentDescription = "Logo TULSA",
                 modifier = Modifier
-                    .size(200.dp)
-                    .offset(x = (-6).dp, y = (-20).dp),
+                    .size(120.dp),
                 contentScale = ContentScale.Fit
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Saludo personalizado
             Text(
@@ -127,7 +128,7 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(bottom = 48.dp)
+                modifier = Modifier.padding(bottom = 32.dp)
             )
 
             if (isSupervisor) {

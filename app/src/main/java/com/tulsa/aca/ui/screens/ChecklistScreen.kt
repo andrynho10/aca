@@ -57,6 +57,11 @@ fun ChecklistScreen(
     val saveSuccess by viewModel.saveSuccess.collectAsState()
     val saveError by viewModel.saveError.collectAsState()
 
+    val ultimoHorometro by viewModel.ultimoHorometro.collectAsState()
+    val isValidating by viewModel.isValidating.collectAsState()
+    val errorValidacionViewModel by viewModel.errorValidacion.collectAsState()
+
+
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -142,13 +147,50 @@ fun ChecklistScreen(
                         ),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        isError = errorValidacionViewModel != null,
                         supportingText = {
-                            Text(
-                                "Si ingresas el horómetro, deberás cerrarlo después de la inspección.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            if (errorValidacionViewModel != null) {
+                                Text(
+                                    errorValidacionViewModel!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            } else {
+                                Text(
+                                    "Si ingresas el horómetro, deberás cerrarlo después de la inspección.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     )
+
+                    // Mostrar último horómetro registrado si existe
+                    if (ultimoHorometro != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Info,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Último horómetro registrado: $ultimoHorometro",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -180,16 +222,43 @@ fun ChecklistScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        // Guardar solo el horómetro (turno se calcula en backend)
                         val horometro = horometroInput.toFloatOrNull()
-                        viewModel.actualizarHorometroInicial(horometro)
-                        viewModel.actualizarTurno(null) // ⭐ NULL - se calcula en SQL
 
-                        showHorometroDialog = false
-                        showConfirmDialog = true
-                    }
+                        if (horometro != null) {
+                            // VALIDAR HORÓMETRO ANTES DE CONTINUAR
+                            viewModel.validarHorometroInicial(
+                                activoId = assetId,
+                                horometroInicial = horometro,
+                                onValido = {
+                                    // Validación exitosa
+                                    viewModel.actualizarHorometroInicial(horometro)
+                                    viewModel.actualizarTurno(null)
+                                    showHorometroDialog = false
+                                    showConfirmDialog = true
+                                },
+                                onInvalido = { error ->
+                                    // Validación fallida - el error ya se muestra en errorValidacionViewModel
+                                    android.util.Log.e("ChecklistScreen", "Horómetro inválido: $error")
+                                }
+                            )
+                        } else {
+                            // Sin horómetro, continuar directamente
+                            viewModel.actualizarHorometroInicial(null)
+                            viewModel.actualizarTurno(null)
+                            showHorometroDialog = false
+                            showConfirmDialog = true
+                        }
+                    },
+                    enabled = !isValidating
                 ) {
-                    Text("Continuar")
+                    if (isValidating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(if (isValidating) "Validando..." else "Continuar")
                 }
             },
             dismissButton = {
@@ -200,13 +269,15 @@ fun ChecklistScreen(
                         viewModel.actualizarTurno(null)
                         showHorometroDialog = false
                         showConfirmDialog = true
-                    }
+                    },
+                    enabled = !isValidating
                 ) {
-                    Text("Omitir")
+                    Text("Omitir Horómetro")
                 }
             }
         )
     }
+
 
     // DIALOG DE CONFIRMACIÓN
     if (showConfirmDialog) {

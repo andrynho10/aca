@@ -25,9 +25,10 @@ class ActivoViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _activos.value = repository.obtenerTodosLosActivos()
+                val activosCargados = repository.obtenerTodosLosActivos()
+                // Ordenar alfabéticamente por nombre
+                _activos.value = activosCargados.sortedBy { it.nombre }
             } catch (e: Exception) {
-                // Por ahora solo limpiamos la lista si hay error
                 _activos.value = emptyList()
             } finally {
                 _isLoading.value = false

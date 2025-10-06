@@ -113,7 +113,7 @@ data class ReporteInspeccion(
     @SerialName("duracion_minutos")
     val duracionMinutos: Int? = null,
 
-    // NUEVOS CAMPOS CALCULADOS
+    // CAMPOS CALCULADOS
     @SerialName("tiene_problemas")
     val tieneProblemas: Boolean = false,
     @SerialName("total_respuestas")
@@ -123,7 +123,7 @@ data class ReporteInspeccion(
     @SerialName("score_cumplimiento")
     val scoreCumplimiento: Float = 100.0f,
 
-    // NUEVOS CAMPOS DE HORÓMETRO
+    // CAMPOS DE HORÓMETRO
     val turno: Int? = null,
     @SerialName("horometro_inicial")
     val horometroInicial: Float? = null,
@@ -146,7 +146,7 @@ data class FotoRespuesta(
     @SerialName("created_at")
     val createdAt: String? = null
 )
-// NUEVO MODELO Horómetro Pendiente
+// Horómetro Pendiente
 @Serializable
 data class HorometroPendiente(
     @SerialName("reporte_id")
@@ -161,14 +161,14 @@ data class HorometroPendiente(
     @SerialName("horas_desde_reporte")
     val horasDesdeReporte: Double
 )
-// NUEVO MODELO Dashboard Optimizado
+// Dashboard Optimizado
 @Serializable
 data class DashboardData(
     @SerialName("tipo_metrica")
     val tipoMetrica: String,
     val valor: kotlinx.serialization.json.JsonElement
 )
-// NUEVO MODELO Estadísticas Generales (desde vista materializada)
+// Estadísticas Generales (desde vista materializada)
 @Serializable
 data class EstadisticasGenerales(
     @SerialName("total_reportes")
@@ -185,7 +185,7 @@ data class EstadisticasGenerales(
     val horasUsoTotal: Float
 )
 
-// NUEVO MODELO Top Problemas
+// Top Problemas
 @Serializable
 data class TopProblema(
     @SerialName("pregunta_id")

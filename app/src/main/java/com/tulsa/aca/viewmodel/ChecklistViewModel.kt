@@ -9,6 +9,7 @@ import com.tulsa.aca.data.models.RespuestaReporte
 import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteRepository
 import com.tulsa.aca.data.repository.RespuestaConFotos
+import com.tulsa.aca.data.repository.HorometroRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,7 @@ data class RespuestaChecklistItem(
 class ChecklistViewModel : ViewModel() {
     private val plantillaRepository = PlantillaRepository()
     private val reporteRepository = ReporteRepository()
+    private val horometroRepository = HorometroRepository()
 
     private val _plantillaCompleta = MutableStateFlow<PlantillaChecklist?>(null)
     val plantillaCompleta: StateFlow<PlantillaChecklist?> = _plantillaCompleta.asStateFlow()
@@ -50,6 +52,15 @@ class ChecklistViewModel : ViewModel() {
     private val _turnoActual = MutableStateFlow<Int?>(null)
     val turnoActual: StateFlow<Int?> = _turnoActual.asStateFlow()
 
+    private val _ultimoHorometro = MutableStateFlow<Float?>(null)
+    val ultimoHorometro: StateFlow<Float?> = _ultimoHorometro.asStateFlow()
+
+    private val _isValidating = MutableStateFlow(false)
+    val isValidating: StateFlow<Boolean> = _isValidating.asStateFlow()
+
+    private val _errorValidacion = MutableStateFlow<String?>(null)
+    val errorValidacion: StateFlow<String?> = _errorValidacion.asStateFlow()
+
     fun actualizarHorometroInicial(horometro: Float?) {
         _horometroInicial.value = horometro
         android.util.Log.d("ChecklistViewModel", "Horómetro inicial actualizado: $horometro")
@@ -59,14 +70,54 @@ class ChecklistViewModel : ViewModel() {
         _turnoActual.value = turno
         android.util.Log.d("ChecklistViewModel", "Turno actualizado: $turno")
     }
+    fun validarHorometroInicial(
+        activoId: Int,
+        horometroInicial: Float,
+        onValido: () -> Unit,
+        onInvalido: (String) -> Unit
+    ) {
+        _isValidating.value = true
+        _errorValidacion.value = null
 
-    // ========== MODIFICAR LA FUNCIÓN clearSaveStates() ==========
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("ChecklistViewModel", "Validando horómetro inicial: $horometroInicial para activo $activoId")
+
+                val resultado = horometroRepository.validarHorometroInicial(activoId, horometroInicial)
+
+                if (resultado.valido) {
+                    android.util.Log.d("ChecklistViewModel", "✅ Horómetro inicial válido")
+                    _isValidating.value = false
+                    _ultimoHorometro.value = resultado.ultimoHorometro
+                    _errorValidacion.value = null
+                    onValido()
+                } else {
+                    val error = resultado.error ?: "Horómetro inválido"
+                    android.util.Log.e("ChecklistViewModel", "❌ $error")
+                    _isValidating.value = false
+                    _ultimoHorometro.value = resultado.ultimoHorometro
+                    _errorValidacion.value = error
+                    onInvalido(error)
+                }
+
+            } catch (e: Exception) {
+                val errorMsg = "Error validando horómetro: ${e.message}"
+                android.util.Log.e("ChecklistViewModel", "❌ $errorMsg", e)
+                _isValidating.value = false
+                _errorValidacion.value = errorMsg
+                onInvalido(errorMsg)
+            }
+        }
+    }
+
     fun clearSaveStates() {
         _saveSuccess.value = false
         _saveError.value = null
         _timestampInicio.value = null
-        _horometroInicial.value = null  // ⭐ AGREGAR
-        _turnoActual.value = null        // ⭐ AGREGAR
+        _horometroInicial.value = null
+        _turnoActual.value = null
+        _ultimoHorometro.value = null
+        _errorValidacion.value = null
     }
 
     fun cargarPlantillaCompleta(templateId: Int) {
@@ -89,6 +140,8 @@ class ChecklistViewModel : ViewModel() {
             }
         }
     }
+
+
 
     private fun initializeResponses(plantilla: PlantillaChecklist) {
         val respuestasIniciales = mutableMapOf<Int, RespuestaChecklistItem>()

@@ -45,7 +45,7 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var rememberUser by remember { mutableStateOf(false) } // 🔄 MOVIDO AQUÍ
+    var rememberUser by remember { mutableStateOf(false) }
 
     // FocusRequesters para manejar el foco
     val passwordFocusRequester = remember { FocusRequester() }
@@ -141,15 +141,15 @@ fun LoginScreen(
                 painter = painterResource(id = R.drawable.logo_empresa),
                 contentDescription = "Logo TULSA",
                 modifier = Modifier
-                    .size(200.dp)
-                    .offset(x = (-10).dp),
+                    .size(140.dp)
+                    .offset(x = (-6).dp),
                 contentScale = ContentScale.Fit
             )
             Text(
                 text = "Checklist Inspección Grúas Horquilla",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 32.dp)
+                modifier = Modifier.padding(bottom = 24.dp)
             )
 
             // Card de login
@@ -261,15 +261,6 @@ fun LoginScreen(
                         }
                         Text("Iniciar Sesión")
                     }
-
-                    // Usuarios de prueba
-                    Text(
-                        text = "Usuarios de prueba:\n• operador@test.com\n• supervisor@test.com\nContraseña: password123",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 16.dp)
-                    )
                 }
             }
         }
