@@ -160,7 +160,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
         val cacheExpirado = esCacheExpirado()
         val tiempoDesdeUltimaActualizacion = ahora - ultimaActualizacion.get()
 
-        // ✅ CACHE MEJORADO - Considerar si viene de detalle
+        // CACHE MEJORADO - Considera si viene de detalle
         val usarCache = !forzarRecarga &&
                 datosYaCargados.get() &&
                 ultimaCargaExitosa.get() &&
@@ -202,7 +202,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                 val usuarios = usuarioRepository.obtenerTodosLosUsuarios()
                 val operadores = usuarios.filter { it.rol == "OPERADOR" }
 
-                // ✅ CARGAR REPORTES OPTIMIZADO - Los problemas ya vienen calculados
+                // CARGAR REPORTES OPTIMIZADO - Los problemas ya vienen calculados
                 val reportesTotales = mutableListOf<ReporteCompleto>()
 
                 activos.forEach { activo ->
@@ -221,7 +221,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                                 usuario = usuario,
                                 activo = activo,
                                 plantilla = plantilla,
-                                tieneProblemas = reporte.tieneProblemas // ⭐ Ya viene calculado desde BD!
+                                tieneProblemas = reporte.tieneProblemas // Ya viene calculado desde BD!
                             )
                         )
                     }
@@ -232,7 +232,6 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                     it.reporte.timestampCompletado
                 }
 
-                // ✅ YA NO NECESITAMOS calcularReportesConProblemas() - Datos ya vienen listos!
 
                 // THREAD-SAFE ASSIGNMENT
                 synchronized(this@SupervisorViewModel) {

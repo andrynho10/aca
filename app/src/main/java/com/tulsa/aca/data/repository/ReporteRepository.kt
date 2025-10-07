@@ -9,6 +9,7 @@ import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.*
 import io.github.jan.supabase.postgrest.query.Order
+import java.time.Instant
 import java.util.UUID
 
 data class RespuestaConFotos(
@@ -296,6 +297,22 @@ class ReporteRepository {
             android.util.Log.d("ReporteRepository", "  Activo: $activoId")
             android.util.Log.d("ReporteRepository", "  Usuario: $usuarioId")
             android.util.Log.d("ReporteRepository", "  Respuestas: ${respuestasConFotos.size}")
+            android.util.Log.d("ReporteRepository", "  timestamp_inicio recibido: $timestampInicio")
+            android.util.Log.d("ReporteRepository", "  timestamp_completado recibido: $timestampFin")
+            runCatching { Instant.parse(timestampInicio) }
+                .onSuccess {
+                    android.util.Log.d("ReporteRepository", "  timestamp_inicio parseado (UTC): $it")
+                }
+                .onFailure {
+                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_inicio: ${it.message}")
+                }
+            runCatching { Instant.parse(timestampFin) }
+                .onSuccess {
+                    android.util.Log.d("ReporteRepository", "  timestamp_completado parseado (UTC): $it")
+                }
+                .onFailure {
+                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_completado: ${it.message}")
+                }
 
             // 1. CREAR REPORTE
             val reporte = ReporteInspeccion(
@@ -372,6 +389,8 @@ class ReporteRepository {
             false
         }
     }
+
+
     /**
      * NUEVA FUNCIÓN: Crear reporte con timestamps, horómetro y turno
      */
@@ -397,6 +416,22 @@ class ReporteRepository {
             android.util.Log.d("ReporteRepository", "  Respuestas: ${respuestasConFotos.size}")
             android.util.Log.d("ReporteRepository", "  Horómetro inicial: $horometroInicial")
             android.util.Log.d("ReporteRepository", "  Turno: $turno")
+            android.util.Log.d("ReporteRepository", "  timestamp_inicio recibido: $timestampInicio")
+            android.util.Log.d("ReporteRepository", "  timestamp_completado recibido: $timestampFin")
+            runCatching { Instant.parse(timestampInicio) }
+                .onSuccess {
+                    android.util.Log.d("ReporteRepository", "  timestamp_inicio parseado (UTC): $it")
+                }
+                .onFailure {
+                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_inicio: ${it.message}")
+                }
+            runCatching { Instant.parse(timestampFin) }
+                .onSuccess {
+                    android.util.Log.d("ReporteRepository", "  timestamp_completado parseado (UTC): $it")
+                }
+                .onFailure {
+                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_completado: ${it.message}")
+                }
 
             // 1. CREAR REPORTE CON HORÓMETRO
             val reporte = ReporteInspeccion(

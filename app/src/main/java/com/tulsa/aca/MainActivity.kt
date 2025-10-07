@@ -1,14 +1,22 @@
 package com.tulsa.aca
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,18 +43,64 @@ import com.tulsa.aca.ui.screens.PlantillasCrudScreen
 import com.tulsa.aca.ui.screens.ReportDetailsScreen
 import com.tulsa.aca.ui.screens.SupervisorPanelScreen
 import com.tulsa.aca.ui.theme.ACATheme
+import com.tulsa.aca.utils.HorometroNotificationHelper
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import androidx.core.content.ContextCompat
 
 
 class MainActivity : ComponentActivity() {
+
+    private val notificationDestination = mutableStateOf<String?>(null)
+
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            android.util.Log.d("MainActivity", "Permiso de notificaciones concedido: $granted")
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        updateNotificationDestination(intent)
+        requestNotificationPermissionIfNeeded()
         enableEdgeToEdge()
         setContent {
+            val destination by notificationDestination
             ACATheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ACAApp(modifier = Modifier.padding(innerPadding))
+                    ACAApp(
+                        modifier = Modifier.padding(innerPadding),
+                        notificationDestination = destination,
+                        onNotificationDestinationConsumed = {
+                            notificationDestination.value = null
+                        }
+                    )
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        updateNotificationDestination(intent)
+    }
+
+    private fun updateNotificationDestination(intent: Intent?) {
+        val route = intent?.getStringExtra(HorometroNotificationHelper.EXTRA_TARGET_ROUTE)
+        if (!route.isNullOrEmpty()) {
+            notificationDestination.value = route
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasPermission) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
@@ -55,9 +109,47 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ACAApp(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberNavController(),
+    notificationDestination: String? = null,
+    onNotificationDestinationConsumed: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(notificationDestination) {
+        val destination = notificationDestination
+        if (destination != null) {
+            val loggedIn = withTimeoutOrNull(5 * 60 * 1000L) {
+                while (UserSession.getCurrentUser() == null) {
+                    android.util.Log.d(
+                        "MainActivity",
+                        "Esperando sesión de usuario para navegar a $destination"
+                    )
+                    delay(300)
+                }
+                true
+            } ?: false
+
+            if (!loggedIn) {
+                android.util.Log.d(
+                    "MainActivity",
+                    "Tiempo de espera agotado para navegar a $destination"
+                )
+                onNotificationDestinationConsumed()
+                return@LaunchedEffect
+            }
+            android.util.Log.d(
+                "MainActivity",
+                "Procesando navegación desde notificación hacia: $destination"
+            )
+            navController.navigate(Screen.Home.route) {
+                launchSingleTop = true
+            }
+            navController.navigate(destination) {
+                launchSingleTop = true
+            }
+            onNotificationDestinationConsumed()
+        }
+    }
 
     NavHost(
         navController = navController,

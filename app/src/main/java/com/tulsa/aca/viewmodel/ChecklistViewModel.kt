@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 data class RespuestaChecklistItem(
     val preguntaId: Int,
@@ -45,7 +49,7 @@ class ChecklistViewModel : ViewModel() {
     private val _saveError = MutableStateFlow<String?>(null)
     val saveError: StateFlow<String?> = _saveError.asStateFlow()
 
-    private val _timestampInicio = MutableStateFlow<Long?>(null)
+    private val _timestampInicio = MutableStateFlow<Instant?>(null)
     private val _horometroInicial = MutableStateFlow<Float?>(null)
     val horometroInicial: StateFlow<Float?> = _horometroInicial.asStateFlow()
 
@@ -123,7 +127,8 @@ class ChecklistViewModel : ViewModel() {
     fun cargarPlantillaCompleta(templateId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
-            _timestampInicio.value = System.currentTimeMillis()
+            _timestampInicio.value = Instant.now()
+
 
             android.util.Log.d("ChecklistViewModel", "Iniciando inspección - Timestamp: ${_timestampInicio.value}")
 
@@ -202,19 +207,65 @@ class ChecklistViewModel : ViewModel() {
             _isSaving.value = true
 
             try {
-                // Calcular duración
-                val timestampFin = System.currentTimeMillis()
-                val timestampInicio = _timestampInicio.value ?: timestampFin
-                val duracionMinutos = ((timestampFin - timestampInicio) / 1000 / 60).toInt()
+                // OBTENER TIMESTAMPS EN UTC DIRECTAMENTE
+                val timestampFinUTC = Instant.now()
+                val timestampInicioUTC = _timestampInicio.value ?: timestampFinUTC
 
-                android.util.Log.d("ChecklistViewModel", "⏰ Finalizando inspección:")
-                android.util.Log.d("ChecklistViewModel", "   Inicio: $timestampInicio")
-                android.util.Log.d("ChecklistViewModel", "   Fin: $timestampFin")
-                android.util.Log.d("ChecklistViewModel", "   Duración: $duracionMinutos minutos")
+                val (inicioUtcNormalizado, finUtcNormalizado) =
+                    if (timestampInicioUTC <= timestampFinUTC) {
+                        timestampInicioUTC to timestampFinUTC
+                    } else {
+                        android.util.Log.w(
+                            "ChecklistViewModel",
+                            "Timestamp de inicio posterior al fin; corrigiendo orden. inicio=$timestampInicioUTC fin=$timestampFinUTC"
+                        )
+                        timestampFinUTC to timestampInicioUTC
+                    }
 
-                // 🆕 DEBUG DETALLADO DE RESPUESTAS
-                android.util.Log.d("ChecklistViewModel", "📋 PREPARANDO RESPUESTAS PARA ENVIAR:")
-                android.util.Log.d("ChecklistViewModel", "   Total respuestas en memoria: ${_respuestas.value.size}")
+                // Calcular duracion en minutos sin permitir negativos
+                val duracionMinutos = Duration
+                    .between(inicioUtcNormalizado, finUtcNormalizado)
+                    .toMinutes()
+                    .coerceAtLeast(0)
+                    .toInt()
+
+                val timestampInicioIso = DateTimeFormatter
+                    .ISO_INSTANT
+                    .format(inicioUtcNormalizado)
+                val timestampFinIso = DateTimeFormatter
+                    .ISO_INSTANT
+                    .format(finUtcNormalizado)
+                val zonaDispositivo = ZoneId.systemDefault()
+                val inicioZona = inicioUtcNormalizado.atZone(zonaDispositivo)
+                val finZona = finUtcNormalizado.atZone(zonaDispositivo)
+
+                // LOGS DE DEBUG
+                android.util.Log.d("ChecklistViewModel", "Finalizando inspeccion:")
+                android.util.Log.d("ChecklistViewModel", "   Inicio UTC: $inicioUtcNormalizado")
+                android.util.Log.d("ChecklistViewModel", "   Fin UTC: $finUtcNormalizado")
+                android.util.Log.d("ChecklistViewModel", "   Timestamp inicio enviado (ISO_INSTANT): $timestampInicioIso")
+                android.util.Log.d("ChecklistViewModel", "   Timestamp fin enviado (ISO_INSTANT): $timestampFinIso")
+                android.util.Log.d(
+                    "ChecklistViewModel",
+                    "   Timestamp inicio en zona ${zonaDispositivo.id}: ${
+                        DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(inicioZona)
+                    }"
+                )
+                android.util.Log.d(
+                    "ChecklistViewModel",
+                    "   Timestamp fin en zona ${zonaDispositivo.id}: ${
+                        DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(finZona)
+                    }"
+                )
+                android.util.Log.d("ChecklistViewModel", "   Duracion: $duracionMinutos minutos")
+
+                // Verificar zona horaria del dispositivo
+                val zonaHoraria = java.util.TimeZone.getDefault().id
+                android.util.Log.d("ChecklistViewModel", "   Zona horaria dispositivo: $zonaHoraria")
+
+                // DEBUG RESPUESTAS
+                android.util.Log.d("ChecklistViewModel", "📋 PREPARANDO RESPUESTAS:")
+                android.util.Log.d("ChecklistViewModel", "   Total: ${_respuestas.value.size}")
 
                 _respuestas.value.forEach { (preguntaId, item) ->
                     val estado = if (item.respuesta == true) "✅ BUENO" else if (item.respuesta == false) "❌ MALO" else "❓ NULL"
@@ -227,12 +278,12 @@ class ChecklistViewModel : ViewModel() {
                     }
                 }
 
-                // Convertir respuestas con fotos...
+                // Convertir respuestas
                 val respuestasConFotos = _respuestas.value.values.map { item ->
                     RespuestaConFotos(
                         respuesta = RespuestaReporte(
                             preguntaId = item.preguntaId,
-                            reporteId = "", // Se asignará en el repository
+                            reporteId = "",
                             respuesta = item.respuesta ?: true,
                             comentario = item.comentario.takeIf { it.isNotBlank() }
                         ),
@@ -241,26 +292,28 @@ class ChecklistViewModel : ViewModel() {
                 }
 
                 android.util.Log.d("ChecklistViewModel", "📤 ENVIANDO AL REPOSITORY:")
-                android.util.Log.d("ChecklistViewModel", "   Activo ID: $assetId")
-                android.util.Log.d("ChecklistViewModel", "   Usuario ID: $userId")
-                android.util.Log.d("ChecklistViewModel", "   Plantilla ID: $templateId")
+                android.util.Log.d("ChecklistViewModel", "   Activo: $assetId")
+                android.util.Log.d("ChecklistViewModel", "   Usuario: $userId")
+                android.util.Log.d("ChecklistViewModel", "   Plantilla: $templateId")
                 android.util.Log.d("ChecklistViewModel", "   Respuestas: ${respuestasConFotos.size}")
+                android.util.Log.d("ChecklistViewModel", "   Horómetro inicial: ${_horometroInicial.value}")
+                android.util.Log.d("ChecklistViewModel", "   Turno: ${_turnoActual.value}")
 
-                // Llamar repository con horómetro y turno
+                // ENVIAR CON FORMATO ISO STRING
                 val exito = reporteRepository.crearReporteConTimestampsYHorometro(
                     context = context,
                     activoId = assetId,
                     usuarioId = userId,
                     plantillaId = templateId,
                     respuestasConFotos = respuestasConFotos,
-                    timestampInicio = java.time.Instant.ofEpochMilli(timestampInicio).toString(),
-                    timestampFin = java.time.Instant.ofEpochMilli(timestampFin).toString(),
+                    timestampInicio = timestampInicioIso,  // ISO 8601 en UTC
+                    timestampFin = timestampFinIso,        // ISO 8601 en UTC
                     duracionMinutos = duracionMinutos,
                     horometroInicial = _horometroInicial.value,
                     turno = _turnoActual.value
                 )
 
-                android.util.Log.d("ChecklistViewModel", "📤 RESULTADO DEL REPOSITORY: ${if (exito) "✅ ÉXITO" else "❌ FALLÓ"}")
+                android.util.Log.d("ChecklistViewModel", "📤 RESULTADO: ${if (exito) "✅ ÉXITO" else "❌ FALLÓ"}")
 
                 if (exito) {
                     _saveSuccess.value = true
@@ -270,7 +323,7 @@ class ChecklistViewModel : ViewModel() {
                 }
 
             } catch (e: Exception) {
-                android.util.Log.e("ChecklistViewModel", "ERROR: ${e.message}", e)
+                android.util.Log.e("ChecklistViewModel", "❌ ERROR: ${e.message}", e)
                 onError("Error inesperado: ${e.message}")
             } finally {
                 _isSaving.value = false
@@ -278,3 +331,4 @@ class ChecklistViewModel : ViewModel() {
         }
     }
 }
+
