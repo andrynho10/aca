@@ -338,7 +338,7 @@ private fun SupervisorContent(
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Cargar 15 más")
+                                    Text("Cargar 10 más")
                                 }
                             }
                         }

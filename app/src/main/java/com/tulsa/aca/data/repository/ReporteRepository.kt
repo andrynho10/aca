@@ -7,8 +7,10 @@ import com.tulsa.aca.data.models.ReporteInspeccion
 import com.tulsa.aca.data.models.RespuestaReporte
 import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.supabase.SupabaseClient
-import io.github.jan.supabase.postgrest.*
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.time.Instant
 import java.util.UUID
 
@@ -138,6 +140,19 @@ class ReporteRepository {
         }
     }
 
+    suspend fun obtenerReportesRecientes(limite: Int = 50): List<ReporteInspeccion> {
+        return try {
+            android.util.Log.d("ReporteRepository", "Obteniendo $limite reportes más recientes")
+            client.from("reportes_inspeccion").select {
+                order(column = "timestamp_completado", order = Order.DESCENDING)
+                limit(limite.toLong())
+            }.decodeList<ReporteInspeccion>()
+        } catch (e: Exception) {
+            android.util.Log.e("ReporteRepository", "Error obteniendo reportes recientes: ${e.message}", e)
+            emptyList()
+        }
+    }
+
     // Historial Limitado Operadores
     suspend fun obtenerHistorialLimitadoPorActivo(activoId: Int, limite: Int = 5): List<ReporteInspeccion> {
         return try {
@@ -173,44 +188,49 @@ class ReporteRepository {
         }
     }
     // Obtener detalles completos del reporte (para supervisores)
-    suspend fun obtenerReporteCompleto(reporteId: String): ReporteCompleto? {
-        return try {
-            // 1. Obtener el reporte
+    suspend fun obtenerReporteCompleto(reporteId: String): ReporteCompleto? = coroutineScope {
+        try {
+            // 1. Obtener el reporte principal
             val reporte = client.from("reportes_inspeccion").select {
                 filter {
                     ReporteInspeccion::id eq reporteId
                 }
+                limit(1)
             }.decodeSingle<ReporteInspeccion>()
 
-            // 2. Obtener el usuario
-            val usuario = obtenerUsuarioPorId(reporte.usuarioId)
+            // 2. Cargar datos relacionados en paralelo
+            val usuarioDeferred = async { obtenerUsuarioPorId(reporte.usuarioId) }
 
-            // 3. Obtener todas las respuestas del reporte
             val respuestas = client.from("respuestas_reporte").select {
                 filter {
                     RespuestaReporte::reporteId eq reporteId
                 }
             }.decodeList<RespuestaReporte>()
 
-            // 4. Obtener todas las fotos asociadas a las respuestas
-            val fotosMap = mutableMapOf<Int, List<String>>()
-            for (respuesta in respuestas) {
-                respuesta.id?.let { respuestaId ->
+            // 3. Cargar todas las fotos en un solo request
+            val fotosMap = if (respuestas.isEmpty()) {
+                emptyMap()
+            } else {
+                val respuestaIds = respuestas.mapNotNull { it.id }.distinct()
+                if (respuestaIds.isEmpty()) {
+                    emptyMap()
+                } else {
                     val fotos = client.from("fotos_respuesta").select {
-                        filter {
-                            FotoRespuesta::respuestaId eq respuestaId
-                        }
+                        filter { FotoRespuesta::respuestaId isIn respuestaIds }
                     }.decodeList<FotoRespuesta>()
 
-                    if (fotos.isNotEmpty()) {
-                        fotosMap[respuestaId] = fotos.map { it.urlStorage }
+                    if (fotos.isEmpty()) {
+                        emptyMap()
+                    } else {
+                        fotos.groupBy { it.respuestaId }
+                            .mapValues { entry -> entry.value.map { it.urlStorage } }
                     }
                 }
             }
 
             ReporteCompleto(
                 reporte = reporte,
-                usuario = usuario,
+                usuario = usuarioDeferred.await(),
                 respuestas = respuestas,
                 fotos = fotosMap
             )

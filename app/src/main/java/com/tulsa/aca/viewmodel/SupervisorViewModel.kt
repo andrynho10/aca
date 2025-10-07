@@ -57,7 +57,7 @@ data class SupervisorUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     // CAMPOS PARA PAGINACIÓN
-    val reportesMostrados: Int = 15, // Cuántos se están mostrando
+    val reportesMostrados: Int = 10, // Cuántos se están mostrando
     val totalReportesDisponibles: Int = 0, // Total después de filtros
     val puedeCargarMas: Boolean = false, // Si hay más para cargar
     val isLoadingMore: Boolean = false // Loading para "Cargar más"
@@ -86,7 +86,8 @@ class SupervisorViewModel : ViewModel(), Cacheable {
 
     // CONSTANTES DE PAGINACIÓN
     companion object {
-        private const val REPORTES_POR_PAGINA = 15
+        private const val MAX_REPORTES_CACHE = 50
+        private const val REPORTES_POR_PAGINA = 10
         private const val CACHE_EXPIRY_MS = 60 * 1000L // ✅ 1 minuto
         private const val CACHE_DETALLE_MS = 5 * 60 * 1000L // ✅ 5 min para volver de detalle
 
@@ -202,35 +203,39 @@ class SupervisorViewModel : ViewModel(), Cacheable {
                 val usuarios = usuarioRepository.obtenerTodosLosUsuarios()
                 val operadores = usuarios.filter { it.rol == "OPERADOR" }
 
-                // CARGAR REPORTES OPTIMIZADO - Los problemas ya vienen calculados
-                val reportesTotales = mutableListOf<ReporteCompleto>()
+                // Cargar solo los reportes más recientes para una carga inicial rápida
+                val reportesRecientes = reporteRepository.obtenerReportesRecientes(MAX_REPORTES_CACHE)
+                val activosPorId = activos.mapNotNull { activo ->
+                    activo.id?.let { it to activo }
+                }.toMap()
+                val usuariosPorId = usuarios.associateBy { it.id }
+                val plantillaCache = mutableMapOf<Int, PlantillaChecklist?>()
 
-                activos.forEach { activo ->
-                    val reportesActivo = reporteRepository.obtenerHistorialPorActivo(activo.id ?: 0)
-                    reportesActivo.forEach { reporte ->
-                        val usuario = usuarioRepository.obtenerUsuarioPorId(reporte.usuarioId)
-                        val plantilla = try {
+                val reportesTotales = mutableListOf<ReporteCompleto>()
+                reportesRecientes.forEach { reporte ->
+                    val usuario = usuariosPorId[reporte.usuarioId] ?: usuarioRepository.obtenerUsuarioPorId(reporte.usuarioId)
+                    val activo = activosPorId[reporte.activoId]
+                    val plantilla = plantillaCache.getOrPut(reporte.plantillaId) {
+                        try {
                             plantillaRepository.obtenerPlantillaCompleta(reporte.plantillaId)
                         } catch (e: Exception) {
                             null
                         }
-
-                        reportesTotales.add(
-                            ReporteCompleto(
-                                reporte = reporte,
-                                usuario = usuario,
-                                activo = activo,
-                                plantilla = plantilla,
-                                tieneProblemas = reporte.tieneProblemas // Ya viene calculado desde BD!
-                            )
-                        )
                     }
+
+                    reportesTotales.add(
+                        ReporteCompleto(
+                            reporte = reporte,
+                            usuario = usuario,
+                            activo = activo,
+                            plantilla = plantilla,
+                            tieneProblemas = reporte.tieneProblemas
+                        )
+                    )
                 }
 
-                // Ordenar por fecha descendente
-                val reportesOrdenados = reportesTotales.sortedByDescending {
-                    it.reporte.timestampCompletado
-                }
+                // Ya vienen ordenados desc por timestamp, pero aseguramos el orden
+                val reportesOrdenados = reportesTotales.sortedByDescending { it.reporte.timestampCompletado }
 
 
                 // THREAD-SAFE ASSIGNMENT
@@ -273,16 +278,12 @@ class SupervisorViewModel : ViewModel(), Cacheable {
         }
     }
 
-    /**
-     * ✅ AGREGAR MÉTODO NUEVO - Para cuando vuelve de ReportDetails
-     */
+    
     fun cargarDatosDesdeDetalle() {
         cargarDatosSupervisor(forzarRecarga = false, volviendoDeDetalle = true)
     }
 
-    /**
-     * ✅ REEMPLAZAR el método filtrarReportes existente
-     */
+    
     private fun filtrarReportesOptimizado(
         reportes: List<ReporteCompleto>,
         filtros: FiltrosReporte
@@ -349,9 +350,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
         }
     }
 
-    /**
-     * ✅ REEMPLAZAR el método calcularEstadisticas existente
-     */
+ 
     private suspend fun calcularEstadisticasOptimizado(reportes: List<ReporteCompleto>): EstadisticasSupervisor {
         val hoy = Calendar.getInstance()
         val inicioSemana = Calendar.getInstance().apply {
@@ -366,7 +365,7 @@ class SupervisorViewModel : ViewModel(), Cacheable {
         var reportesEstaSemana = 0
         val activosSet = mutableSetOf<Int>()
 
-        // ✅ CONTAR REPORTES CON PROBLEMAS SÚPER RÁPIDO
+   
         val reportesConProblemas = reportes.count { it.reporte.tieneProblemas }
 
         reportes.forEach { reporteCompleto ->
@@ -466,12 +465,12 @@ class SupervisorViewModel : ViewModel(), Cacheable {
 
         // Thread-safe filtering
         val nuevosReportesFiltrados = synchronized(this) {
-            filtrarReportesOptimizado(todosLosReportes, filtros) // ✅ Usar método optimizado
+            filtrarReportesOptimizado(todosLosReportes, filtros)
         }
 
         reportesFiltrados = nuevosReportesFiltrados
 
-        // Resetear paginación a los primeros 15
+        // Resetear paginación a los primeros 10
         val reportesPaginados = reportesFiltrados.take(REPORTES_POR_PAGINA)
 
         _uiState.value = _uiState.value.copy(

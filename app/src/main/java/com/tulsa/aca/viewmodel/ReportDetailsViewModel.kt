@@ -8,6 +8,7 @@ import com.tulsa.aca.data.repository.ActivoRepository
 import com.tulsa.aca.data.repository.PlantillaRepository
 import com.tulsa.aca.data.repository.ReporteCompleto
 import com.tulsa.aca.data.repository.ReporteRepository
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,13 +67,17 @@ class ReportDetailsViewModel : ViewModel() {
                 val reporteCompleto = obtenerReporteDesdeCacheOCargar(reporteId)
 
                 if (reporteCompleto != null) {
-                    val activo = obtenerActivoDesdeCacheOCargar(reporteCompleto.reporte.activoId)
-                    val plantilla = obtenerPlantillaDesdeCacheOCargar(reporteCompleto.reporte.plantillaId)
+                    val activoDeferred = async {
+                        obtenerActivoDesdeCacheOCargar(reporteCompleto.reporte.activoId)
+                    }
+                    val plantillaDeferred = async {
+                        obtenerPlantillaDesdeCacheOCargar(reporteCompleto.reporte.plantillaId)
+                    }
 
                     _uiState.value = _uiState.value.copy(
                         reporteCompleto = reporteCompleto,
-                        activo = activo,
-                        plantilla = plantilla,
+                        activo = activoDeferred.await(),
+                        plantilla = plantillaDeferred.await(),
                         isLoading = false
                     )
 
