@@ -171,7 +171,7 @@ fun LoginScreen(
                         value = email,
                         onValueChange = { email = it },
                         label = { Text("Email") },
-                        placeholder = { Text("usuario@tulsa.cl") },
+                        placeholder = { Text("usuario@apptulsa.cl") },
                         leadingIcon = {
                             Icon(Icons.Default.Email, "Email")
                         },
