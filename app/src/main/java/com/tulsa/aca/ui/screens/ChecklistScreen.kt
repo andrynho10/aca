@@ -12,7 +12,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
@@ -60,6 +62,11 @@ fun ChecklistScreen(
     val ultimoHorometro by viewModel.ultimoHorometro.collectAsState()
     val isValidating by viewModel.isValidating.collectAsState()
     val errorValidacionViewModel by viewModel.errorValidacion.collectAsState()
+
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val preguntasFiltradas = remember(searchQuery, plantillaCompleta) {
+        viewModel.obtenerPreguntasFiltradas()
+    }
 
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -364,29 +371,96 @@ fun ChecklistScreen(
         } else {
             plantillaCompleta?.let { plantilla ->
                 Column {
+                    // Campo de búsqueda
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.actualizarBusqueda(it) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        placeholder = { Text("Buscar pregunta...") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Buscar"
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.actualizarBusqueda("") }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Limpiar búsqueda"
+                                    )
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
                     // Contenido del checklist
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        plantilla.categorias.forEach { categoria ->
-                            items(categoria.preguntas) { pregunta ->
-                                QuestionItem(
-                                    pregunta = pregunta,
-                                    respuesta = respuestas[pregunta.id],
-                                    onRespuestaChanged = { respuesta ->
-                                        viewModel.actualizarRespuesta(pregunta.id, respuesta)
-                                    },
-                                    onComentarioChanged = { comentario ->
-                                        viewModel.actualizarComentario(pregunta.id, comentario)
-                                    },
-                                    onFotosChanged = { fotos ->
-                                        viewModel.actualizarFotos(pregunta.id, fotos)
+                        // Mostrar mensaje si no hay resultados de búsqueda
+                        if (searchQuery.isNotEmpty() && preguntasFiltradas.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(32.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(48.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "No se encontraron preguntas",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "Intenta con otra búsqueda",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
-                                )
+                                }
+                            }
+                        } else {
+                            // Mostrar preguntas filtradas sin mostrar categorías
+                            preguntasFiltradas.forEach { (categoria, preguntas) ->
+                                items(preguntas) { pregunta ->
+                                    QuestionItem(
+                                        pregunta = pregunta,
+                                        respuesta = respuestas[pregunta.id],
+                                        onRespuestaChanged = { respuesta ->
+                                            viewModel.actualizarRespuesta(pregunta.id, respuesta)
+                                        },
+                                        onComentarioChanged = { comentario ->
+                                            viewModel.actualizarComentario(pregunta.id, comentario)
+                                        },
+                                        onFotosChanged = { fotos ->
+                                            viewModel.actualizarFotos(pregunta.id, fotos)
+                                        }
+                                    )
 
-                                Spacer(modifier = Modifier.height(16.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
                             }
                         }
 

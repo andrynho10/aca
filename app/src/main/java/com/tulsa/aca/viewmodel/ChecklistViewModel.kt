@@ -65,6 +65,9 @@ class ChecklistViewModel : ViewModel() {
     private val _errorValidacion = MutableStateFlow<String?>(null)
     val errorValidacion: StateFlow<String?> = _errorValidacion.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     fun actualizarHorometroInicial(horometro: Float?) {
         _horometroInicial.value = horometro
         android.util.Log.d("ChecklistViewModel", "Horómetro inicial actualizado: $horometro")
@@ -73,6 +76,34 @@ class ChecklistViewModel : ViewModel() {
     fun actualizarTurno(turno: Int?) {
         _turnoActual.value = turno
         android.util.Log.d("ChecklistViewModel", "Turno actualizado: $turno")
+    }
+
+    fun actualizarBusqueda(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun obtenerPreguntasFiltradas(): List<Pair<com.tulsa.aca.data.models.CategoriaPlantilla, List<com.tulsa.aca.data.models.PreguntaPlantilla>>> {
+        val plantilla = _plantillaCompleta.value ?: return emptyList()
+        val query = _searchQuery.value.trim()
+
+        if (query.isEmpty()) {
+            // Sin búsqueda: retornar todas las categorías con sus preguntas
+            return plantilla.categorias.map { categoria ->
+                categoria to categoria.preguntas
+            }
+        }
+
+        // Con búsqueda: filtrar preguntas que coincidan
+        return plantilla.categorias.mapNotNull { categoria ->
+            val preguntasFiltradas = categoria.preguntas.filter { pregunta ->
+                pregunta.texto.contains(query, ignoreCase = true)
+            }
+            if (preguntasFiltradas.isNotEmpty()) {
+                categoria to preguntasFiltradas
+            } else {
+                null
+            }
+        }
     }
     fun validarHorometroInicial(
         activoId: Int,
