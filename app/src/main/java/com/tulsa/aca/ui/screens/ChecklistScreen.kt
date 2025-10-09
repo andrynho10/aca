@@ -127,7 +127,7 @@ fun ChecklistScreen(
             text = {
                 Column {
                     Text(
-                        "¿Deseas registrar el horómetro inicial de la grúa?",
+                        "Ingresa el horómetro inicial de la grúa",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
@@ -140,7 +140,7 @@ fun ChecklistScreen(
                                 horometroInput = it
                             }
                         },
-                        label = { Text("Horómetro Inicial (opcional)") },
+                        label = { Text("Horómetro Inicial (obligatorio)") },
                         placeholder = { Text("Ej: 1234.5") },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Decimal
@@ -157,7 +157,7 @@ fun ChecklistScreen(
                                 )
                             } else {
                                 Text(
-                                    "Si ingresas el horómetro, deberás cerrarlo después de la inspección.",
+                                    "Deberás cerrar el horómetro después de la inspección.",
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -241,15 +241,9 @@ fun ChecklistScreen(
                                     android.util.Log.e("ChecklistScreen", "Horómetro inválido: $error")
                                 }
                             )
-                        } else {
-                            // Sin horómetro, continuar directamente
-                            viewModel.actualizarHorometroInicial(null)
-                            viewModel.actualizarTurno(null)
-                            showHorometroDialog = false
-                            showConfirmDialog = true
                         }
                     },
-                    enabled = !isValidating
+                    enabled = !isValidating && horometroInput.toFloatOrNull() != null
                 ) {
                     if (isValidating) {
                         CircularProgressIndicator(
@@ -264,15 +258,10 @@ fun ChecklistScreen(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        // Saltar el horómetro y continuar sin él
-                        viewModel.actualizarHorometroInicial(null)
-                        viewModel.actualizarTurno(null)
                         showHorometroDialog = false
-                        showConfirmDialog = true
-                    },
-                    enabled = !isValidating
+                    }
                 ) {
-                    Text("Omitir Horómetro")
+                    Text("Cancelar")
                 }
             }
         )
