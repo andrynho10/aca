@@ -357,7 +357,7 @@ private fun ActivoDialog(
                     value = nombre,
                     onValueChange = { nombre = it },
                     label = { Text("Nombre del Activo") },
-                    placeholder = { Text("Ej: Grúa Horquilla 01") },
+                    placeholder = { Text("Ej: 301") },
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
@@ -381,7 +381,7 @@ private fun ActivoDialog(
                     value = modelo,
                     onValueChange = { modelo = it },
                     label = { Text("Modelo") },
-                    placeholder = { Text("Ej: Genérico") },
+                    placeholder = { Text("Ej: BPT") },
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -390,7 +390,7 @@ private fun ActivoDialog(
                     value = codigoQr,
                     onValueChange = { codigoQr = it },
                     label = { Text("Código QR") },
-                    placeholder = { Text("Ej: TULSA-GH-01") },
+                    placeholder = { Text("Ej: TULSA-GH-301") },
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
