@@ -256,7 +256,7 @@ fun ChecklistScreen(
                             showConfirmDialog = true
                         }
                     },
-                    enabled = !isValidating
+                    enabled = !isValidating && horometroInput.isNotBlank() && horometroInput.toFloatOrNull() != null
                 ) {
                     if (isValidating) {
                         CircularProgressIndicator(
