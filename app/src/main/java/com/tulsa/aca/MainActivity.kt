@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -28,6 +29,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.navigation.Screen
+import com.tulsa.aca.ui.components.QRScannerScreen
 import com.tulsa.aca.ui.screens.ActivosCrudScreen
 import com.tulsa.aca.ui.screens.AssetHistoryScreen
 import com.tulsa.aca.ui.screens.AssetListScreen
@@ -42,6 +44,8 @@ import com.tulsa.aca.ui.screens.PlantillaEditorScreen
 import com.tulsa.aca.ui.screens.PlantillasCrudScreen
 import com.tulsa.aca.ui.screens.ReportDetailsScreen
 import com.tulsa.aca.ui.screens.SupervisorPanelScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tulsa.aca.viewmodel.ActivoViewModel
 import com.tulsa.aca.ui.theme.ACATheme
 import com.tulsa.aca.utils.HorometroNotificationHelper
 import kotlinx.coroutines.delay
@@ -215,13 +219,59 @@ fun ACAApp(
             )
         }
 
-        // Pantalla de escáner QR (placeholder por ahora)
+        // Pantalla de escáner QR
         composable(Screen.QRScanner.route) {
-            QRScannerPlaceholder(
-                onNavigateBack = {
+            val activoViewModel: ActivoViewModel = viewModel()
+            val activoSeleccionado by activoViewModel.activoSeleccionado.collectAsState()
+            val qrScanError by activoViewModel.qrScanError.collectAsState()
+
+            // Si se encuentra un activo, navegar a selección de checklist
+            LaunchedEffect(activoSeleccionado) {
+                activoSeleccionado?.let { activo ->
+                    activoViewModel.limpiarSeleccion()
+                    navController.navigate(
+                        Screen.ChecklistSelection.createRoute(activo.id ?: 0)
+                    ) {
+                        popUpTo(Screen.Home.route)
+                    }
+                }
+            }
+
+            QRScannerScreen(
+                onQRCodeScanned = { qrCode ->
+                    activoViewModel.buscarActivoPorQR(qrCode)
+                },
+                onClose = {
+                    activoViewModel.limpiarErrorQR()
                     navController.popBackStack()
                 }
             )
+
+            // Mostrar diálogo de error si el código no existe
+            qrScanError?.let { error ->
+                AlertDialog(
+                    onDismissRequest = {
+                        activoViewModel.limpiarErrorQR()
+                    },
+                    title = { Text("Código QR no encontrado") },
+                    text = { Text(error) },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            activoViewModel.limpiarErrorQR()
+                        }) {
+                            Text("Reintentar")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            activoViewModel.limpiarErrorQR()
+                            navController.popBackStack()
+                        }) {
+                            Text("Cancelar")
+                        }
+                    }
+                )
+            }
         }
 
         // Pantalla de selección de checklist
@@ -400,38 +450,6 @@ fun ACAApp(
     }
 }
 
-// Pantallas placeholder temporales
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QRScannerPlaceholder(
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        TopAppBar(
-            title = { Text("Escáner QR") },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver"
-                    )
-                }
-            }
-        )
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Pantalla de Escáner QR\n(En construcción)",
-                style = MaterialTheme.typography.headlineSmall
-            )
-        }
-    }
-}
 
 
 

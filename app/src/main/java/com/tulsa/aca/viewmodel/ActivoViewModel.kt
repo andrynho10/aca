@@ -21,6 +21,9 @@ class ActivoViewModel : ViewModel() {
     private val _activoSeleccionado = MutableStateFlow<Activo?>(null)
     val activoSeleccionado: StateFlow<Activo?> = _activoSeleccionado.asStateFlow()
 
+    private val _qrScanError = MutableStateFlow<String?>(null)
+    val qrScanError: StateFlow<String?> = _qrScanError.asStateFlow()
+
     fun cargarActivos() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -43,16 +46,27 @@ class ActivoViewModel : ViewModel() {
     fun buscarActivoPorQR(codigoQr: String) {
         viewModelScope.launch {
             _isLoading.value = true
+            _qrScanError.value = null
             try {
                 val activo = repository.obtenerActivoPorQR(codigoQr)
                 if (activo != null) {
                     _activoSeleccionado.value = activo
+                } else {
+                    _qrScanError.value = "No se encontró un activo con el código: $codigoQr"
                 }
             } catch (e: Exception) {
-                // Manejar error si es necesario
+                _qrScanError.value = "Error al buscar el activo: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun limpiarSeleccion() {
+        _activoSeleccionado.value = null
+    }
+
+    fun limpiarErrorQR() {
+        _qrScanError.value = null
     }
 }
