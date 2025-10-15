@@ -357,7 +357,7 @@ private fun ActivoDialog(
                     value = nombre,
                     onValueChange = { nombre = it },
                     label = { Text("Nombre del Activo") },
-                    placeholder = { Text("Ej: 301") },
+                    placeholder = { Text("Ej: XXX") },
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
@@ -390,7 +390,7 @@ private fun ActivoDialog(
                     value = codigoQr,
                     onValueChange = { codigoQr = it },
                     label = { Text("Código QR") },
-                    placeholder = { Text("Ej: TULSA-GH-301") },
+                    placeholder = { Text("Ej: TULSA-GH-XXX") },
                     enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
