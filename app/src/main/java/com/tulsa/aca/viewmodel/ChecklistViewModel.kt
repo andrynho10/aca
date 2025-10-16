@@ -410,6 +410,31 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    /**
+     * Valida que todas las respuestas "Malo" tengan comentario Y foto (ambas obligatorias)
+     * @return Par: (esValido, mensaje de error)
+     */
+    fun validarRespuestasMalas(): Pair<Boolean, String?> {
+        val respuestasMalasSinValidar = _respuestas.value.filter { (_, respuesta) ->
+            respuesta.respuesta == false &&
+            (respuesta.comentario.isBlank() || respuesta.fotos.isEmpty())
+        }
+
+        if (respuestasMalasSinValidar.isNotEmpty()) {
+            val preguntasIds = respuestasMalasSinValidar.keys.joinToString(", ")
+            val mensaje = if (respuestasMalasSinValidar.size == 1) {
+                "La pregunta con respuesta MALO debe tener comentario y al menos una foto."
+            } else {
+                "Las preguntas con respuesta MALO deben tener comentario y al menos una foto. " +
+                "Revisa las preguntas que marcaste como MALO."
+            }
+            android.util.Log.w("ChecklistViewModel", "❌ Validación fallida: Preguntas sin validar: $preguntasIds")
+            return false to mensaje
+        }
+
+        return true to null
+    }
+
     fun guardarChecklist(
         assetId: Int,
         userId: String,
@@ -420,6 +445,13 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
     ) {
         if (!todasLasPreguntasRespondidas()) {
             onError("Por favor completa todas las preguntas antes de enviar.")
+            return
+        }
+
+        // Validar que las respuestas "Malo" tengan comentario O foto
+        val (validacionOk, errorValidacion) = validarRespuestasMalas()
+        if (!validacionOk) {
+            onError(errorValidacion ?: "Error de validación")
             return
         }
 

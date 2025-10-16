@@ -83,6 +83,10 @@ fun ChecklistScreen(
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
     }
+
+    val validacionRespuestasMalas = remember(respuestas) {
+        viewModel.validarRespuestasMalas()
+    }
     // MANEJAR ESTADO DE ÉXITO
     LaunchedEffect(saveSuccess) {
         if (saveSuccess) {
@@ -690,14 +694,23 @@ fun ChecklistScreen(
                             Button(
                                 onClick = {
                                     if (todasRespondidas && !isSaving) {
-                                        showHorometroDialog = true
+                                        // Validar respuestas malas antes de continuar
+                                        val (validacionOk, errorMsg) = viewModel.validarRespuestasMalas()
+                                        if (!validacionOk) {
+                                            errorMessage = errorMsg
+                                        } else {
+                                            errorMessage = null
+                                            showHorometroDialog = true
+                                        }
                                     }
                                 },
                                 enabled = todasRespondidas && !isSaving,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (todasRespondidas)
+                                    containerColor = if (todasRespondidas && validacionRespuestasMalas.first)
                                         MaterialTheme.colorScheme.primary
+                                    else if (todasRespondidas && !validacionRespuestasMalas.first)
+                                        MaterialTheme.colorScheme.error
                                     else
                                         MaterialTheme.colorScheme.surfaceVariant
                                 )
@@ -720,6 +733,15 @@ fun ChecklistScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Completar todas las preguntas")
+                                    }
+                                    todasRespondidas && !validacionRespuestasMalas.first -> {
+                                        Icon(
+                                            imageVector = Icons.Default.Warning,
+                                            contentDescription = "Validación pendiente",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Agregar comentarios o fotos")
                                     }
                                     else -> {
                                         Icon(
@@ -848,9 +870,40 @@ private fun QuestionItem(
             }
         }
 
-        // CAMPO DE COMENTARIO CON BOTÓN LISTO INTEGRADO
+        // CAMPO DE COMENTARIO Y FOTOS PARA RESPUESTAS MALAS
         if (respuesta?.respuesta == false) {
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Alerta si falta comentario O foto (ambas son obligatorias)
+            val necesitaValidacion = respuesta.comentario.isBlank() || respuesta.fotos.isEmpty()
+            if (necesitaValidacion) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Advertencia",
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Requerido: Agrega un comentario o una foto",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             // BOX PARA SUPERPONER EL BOTÓN SOBRE EL TEXTFIELD
             Box(
@@ -859,7 +912,7 @@ private fun QuestionItem(
                 OutlinedTextField(
                     value = respuesta.comentario,
                     onValueChange = onComentarioChanged,
-                    label = { Text("Comentario (requerido para estado Malo)") },
+                    label = { Text("Observación obligatoria") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(end = 48.dp),
@@ -868,7 +921,8 @@ private fun QuestionItem(
                     shape = RoundedCornerShape(8.dp),
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Default
-                    )
+                    ),
+                    isError = necesitaValidacion
                 )
 
                 // BOTÓN "LISTO"
