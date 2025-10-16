@@ -1,24 +1,31 @@
 package com.tulsa.aca.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.HistorialUiState
 import com.tulsa.aca.data.models.ReporteConUsuario
-import com.tulsa.aca.data.repository.ActivoRepository
-import com.tulsa.aca.data.repository.ReporteRepository
+import com.tulsa.aca.data.repository.OfflineActivoRepository
+import com.tulsa.aca.data.repository.OfflineReporteRepository
 import com.tulsa.aca.data.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class HistorialViewModel : ViewModel() {
-    private val activoRepository = ActivoRepository()
-    private val reporteRepository = ReporteRepository()
+class HistorialViewModel(application: Application) : AndroidViewModel(application) {
+    private val activoRepository = OfflineActivoRepository(application)
+    private val reporteRepository = OfflineReporteRepository(application)
     private val usuarioRepository = UsuarioRepository()
 
     private val _uiState = MutableStateFlow(HistorialUiState())
     val uiState: StateFlow<HistorialUiState> = _uiState.asStateFlow()
+
+    // Estado de conectividad
+    val isConnected = reporteRepository.observarConectividad()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun cargarHistorialActivo(activoId: Int, tipoUsuario: String = "OPERADOR") {
         viewModelScope.launch {

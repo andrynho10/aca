@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compilar e instalar en Android",
+      "type": "shell",
+      "command": "./gradlew installDebug && adb shell am start -n com.tu.paquete/.MainActivity",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Ejecutar app en Android",
+      "type": "shell",
+      "command": "adb shell am start -n com.tulsa.aca/.MainActivity",
+      "group": "none",
+      "problemMatcher": []
+    }
+  ]
+}

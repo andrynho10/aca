@@ -1,13 +1,14 @@
 package com.tulsa.aca.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.Activo
 import com.tulsa.aca.data.models.PlantillaChecklist
-import com.tulsa.aca.data.repository.ActivoRepository
-import com.tulsa.aca.data.repository.PlantillaRepository
+import com.tulsa.aca.data.repository.OfflineActivoRepository
+import com.tulsa.aca.data.repository.OfflinePlantillaRepository
 import com.tulsa.aca.data.repository.ReporteCompleto
-import com.tulsa.aca.data.repository.ReporteRepository
+import com.tulsa.aca.data.repository.OfflineReporteRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,10 +24,10 @@ data class ReportDetailsUiState(
     val error: String? = null
 )
 
-class ReportDetailsViewModel : ViewModel() {
-    private val reporteRepository = ReporteRepository()
-    private val activoRepository = ActivoRepository()
-    private val plantillaRepository = PlantillaRepository()
+class ReportDetailsViewModel(application: Application) : AndroidViewModel(application) {
+    private val reporteRepository = OfflineReporteRepository(application)
+    private val activoRepository = OfflineActivoRepository(application)
+    private val plantillaRepository = OfflinePlantillaRepository(application)
 
     private val _uiState = MutableStateFlow(ReportDetailsUiState())
     val uiState: StateFlow<ReportDetailsUiState> = _uiState.asStateFlow()

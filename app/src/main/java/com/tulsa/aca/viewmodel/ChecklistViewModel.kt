@@ -1,18 +1,21 @@
 package com.tulsa.aca.viewmodel
 
+import android.app.Application
 import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.PlantillaChecklist
 import com.tulsa.aca.data.models.RespuestaReporte
-import com.tulsa.aca.data.repository.PlantillaRepository
-import com.tulsa.aca.data.repository.ReporteRepository
+import com.tulsa.aca.data.repository.OfflinePlantillaRepository
+import com.tulsa.aca.data.repository.OfflineReporteRepository
 import com.tulsa.aca.data.repository.RespuestaConFotos
 import com.tulsa.aca.data.repository.HorometroRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
@@ -26,9 +29,9 @@ data class RespuestaChecklistItem(
     val fotos: List<Uri> = emptyList()
 )
 
-class ChecklistViewModel : ViewModel() {
-    private val plantillaRepository = PlantillaRepository()
-    private val reporteRepository = ReporteRepository()
+class ChecklistViewModel(application: Application) : AndroidViewModel(application) {
+    private val plantillaRepository = OfflinePlantillaRepository(application)
+    private val reporteRepository = OfflineReporteRepository(application)
     private val horometroRepository = HorometroRepository()
 
     private val _plantillaCompleta = MutableStateFlow<PlantillaChecklist?>(null)
@@ -67,6 +70,14 @@ class ChecklistViewModel : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    // Estado de conectividad
+    val isConnected = reporteRepository.observarConectividad()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    // Número de reportes pendientes de sincronización
+    val reportesPendientes = reporteRepository.observarReportesPendientes()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     fun actualizarHorometroInicial(horometro: Float?) {
         _horometroInicial.value = horometro
@@ -330,9 +341,8 @@ class ChecklistViewModel : ViewModel() {
                 android.util.Log.d("ChecklistViewModel", "   Horómetro inicial: ${_horometroInicial.value}")
                 android.util.Log.d("ChecklistViewModel", "   Turno: ${_turnoActual.value}")
 
-                // ENVIAR CON FORMATO ISO STRING
-                val exito = reporteRepository.crearReporteConTimestampsYHorometro(
-                    context = context,
+                // ENVIAR CON FORMATO ISO STRING (funciona online y offline)
+                val resultado = reporteRepository.crearReporteConTimestampsYHorometro(
                     activoId = assetId,
                     usuarioId = userId,
                     plantillaId = templateId,
@@ -344,13 +354,21 @@ class ChecklistViewModel : ViewModel() {
                     turno = _turnoActual.value
                 )
 
-                android.util.Log.d("ChecklistViewModel", "📤 RESULTADO: ${if (exito) "✅ ÉXITO" else "❌ FALLÓ"}")
-
-                if (exito) {
+                if (resultado.isSuccess) {
+                    val reporteId = resultado.getOrNull()
+                    val conectado = reporteRepository.isConnected()
+                    val mensaje = if (conectado) {
+                        "✅ Reporte creado exitosamente (ID: $reporteId)"
+                    } else {
+                        "✅ Reporte guardado offline (se sincronizará cuando haya conexión)"
+                    }
+                    android.util.Log.d("ChecklistViewModel", mensaje)
                     _saveSuccess.value = true
                     onSuccess()
                 } else {
-                    onError("Error al guardar el checklist. Intenta nuevamente.")
+                    val error = resultado.exceptionOrNull()?.message ?: "Error desconocido"
+                    android.util.Log.e("ChecklistViewModel", "❌ Error al guardar: $error")
+                    onError("Error al guardar el checklist: $error")
                 }
 
             } catch (e: Exception) {

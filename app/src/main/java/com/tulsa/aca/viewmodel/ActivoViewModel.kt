@@ -1,16 +1,19 @@
 package com.tulsa.aca.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.Activo
-import com.tulsa.aca.data.repository.ActivoRepository
+import com.tulsa.aca.data.repository.OfflineActivoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class ActivoViewModel : ViewModel() {
-    private val repository = ActivoRepository()
+class ActivoViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = OfflineActivoRepository(application)
 
     private val _activos = MutableStateFlow<List<Activo>>(emptyList())
     val activos: StateFlow<List<Activo>> = _activos.asStateFlow()
@@ -23,6 +26,10 @@ class ActivoViewModel : ViewModel() {
 
     private val _qrScanError = MutableStateFlow<String?>(null)
     val qrScanError: StateFlow<String?> = _qrScanError.asStateFlow()
+
+    // Estado de conectividad
+    val isConnected = repository.observarConectividad()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun cargarActivos() {
         viewModelScope.launch {
@@ -68,5 +75,24 @@ class ActivoViewModel : ViewModel() {
 
     fun limpiarErrorQR() {
         _qrScanError.value = null
+    }
+
+    fun sincronizarConServidor() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val success = repository.sincronizarConServidor()
+                if (success) {
+                    cargarActivos() // Recargar lista actualizada
+                    android.util.Log.d("ActivoViewModel", "✅ Sincronización exitosa")
+                } else {
+                    android.util.Log.w("ActivoViewModel", "⚠️ No se pudo sincronizar (sin conexión)")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ActivoViewModel", "❌ Error sincronizando: ${e.message}", e)
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 }

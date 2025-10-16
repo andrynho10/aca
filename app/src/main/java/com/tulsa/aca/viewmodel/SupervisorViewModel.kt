@@ -1,14 +1,15 @@
 package com.tulsa.aca.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.Activo
 import com.tulsa.aca.data.models.PlantillaChecklist
 import com.tulsa.aca.data.models.ReporteConUsuario
 import com.tulsa.aca.data.models.Usuario
-import com.tulsa.aca.data.repository.ActivoRepository
-import com.tulsa.aca.data.repository.PlantillaRepository
-import com.tulsa.aca.data.repository.ReporteRepository
+import com.tulsa.aca.data.repository.OfflineActivoRepository
+import com.tulsa.aca.data.repository.OfflinePlantillaRepository
+import com.tulsa.aca.data.repository.OfflineReporteRepository
 import com.tulsa.aca.data.repository.UsuarioRepository
 import com.tulsa.aca.utils.CacheManager
 import com.tulsa.aca.utils.Cacheable
@@ -63,12 +64,12 @@ data class SupervisorUiState(
     val isLoadingMore: Boolean = false // Loading para "Cargar más"
 )
 
-class SupervisorViewModel : ViewModel(), Cacheable {
+class SupervisorViewModel(application: Application) : AndroidViewModel(application), Cacheable {
 
-    private val reporteRepository = ReporteRepository()
-    private val activoRepository = ActivoRepository()
+    private val reporteRepository = OfflineReporteRepository(application)
+    private val activoRepository = OfflineActivoRepository(application)
     private val usuarioRepository = UsuarioRepository()
-    private val plantillaRepository = PlantillaRepository()
+    private val plantillaRepository = OfflinePlantillaRepository(application)
 
     private val _uiState = MutableStateFlow(SupervisorUiState())
     val uiState: StateFlow<SupervisorUiState> = _uiState.asStateFlow()
