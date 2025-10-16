@@ -166,6 +166,27 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         _errorValidacion.value = null
     }
 
+    /**
+     * Fuerza la sincronización manual de reportes pendientes
+     */
+    fun forzarSincronizacion() {
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("ChecklistViewModel", "🔄 Forzando sincronización manual...")
+                val resultado = reporteRepository.forzarSincronizacion()
+
+                if (resultado.isSuccess) {
+                    val sincronizados = resultado.getOrNull() ?: 0
+                    android.util.Log.d("ChecklistViewModel", "✅ Sincronizados: $sincronizados reportes")
+                } else {
+                    android.util.Log.w("ChecklistViewModel", "⚠️ Error en sincronización: ${resultado.exceptionOrNull()?.message}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChecklistViewModel", "❌ Error forzando sincronización: ${e.message}", e)
+            }
+        }
+    }
+
     fun cargarPlantillaCompleta(templateId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
