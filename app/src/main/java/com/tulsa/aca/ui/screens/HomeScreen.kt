@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.R
 import com.tulsa.aca.data.session.UserSession
+import com.tulsa.aca.ui.components.NetworkStatusChip
 import com.tulsa.aca.utils.HorometroNotificationHelper
 import com.tulsa.aca.viewmodel.HorometroViewModel
 
@@ -64,14 +65,14 @@ fun HomeScreen(
                         text = "Checklist Inspección",
                         style = MaterialTheme.typography.titleLarge
                     )
-                    Text(
-                        text = "TULSA S.A.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             },
             actions = {
+                // Indicador de estado de red
+                NetworkStatusChip(showLabel = true)
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 // Mostrar rol del usuario
                 AssistChip(
                     onClick = { },

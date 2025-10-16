@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.Activo
+import com.tulsa.aca.ui.components.NetworkStatusChip
 import com.tulsa.aca.viewmodel.ActivoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +60,10 @@ fun AssetListScreen(
                         contentDescription = "Volver"
                     )
                 }
+            },
+            actions = {
+                NetworkStatusChip(showLabel = false)
+                Spacer(modifier = Modifier.width(8.dp))
             }
         )
 

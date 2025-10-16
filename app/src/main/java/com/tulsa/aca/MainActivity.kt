@@ -29,6 +29,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.tulsa.aca.data.session.UserSession
 import com.tulsa.aca.ui.navigation.Screen
+import com.tulsa.aca.ui.components.NetworkStatusBanner
 import com.tulsa.aca.ui.components.QRScannerScreen
 import com.tulsa.aca.ui.screens.ActivosCrudScreen
 import com.tulsa.aca.ui.screens.AssetHistoryScreen
@@ -155,11 +156,16 @@ fun ACAApp(
         }
     }
 
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Login.route,
-        modifier = modifier
-    ) {
+    Column(modifier = modifier) {
+        // Banner de estado de red - se muestra solo cuando está offline
+        NetworkStatusBanner()
+
+        // Navegación principal
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Login.route,
+            modifier = Modifier.weight(1f)
+        ) {
         // Ruta de login
         composable(Screen.Login.route) {
             LoginScreen(
@@ -446,6 +452,7 @@ fun ACAApp(
                     navController.popBackStack()
                 }
             )
+        }
         }
     }
 }

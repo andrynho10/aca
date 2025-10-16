@@ -36,6 +36,7 @@ import com.tulsa.aca.data.models.CategoriaPlantilla
 import com.tulsa.aca.data.models.PlantillaChecklist
 import com.tulsa.aca.data.models.PreguntaPlantilla
 import com.tulsa.aca.data.session.UserSession
+import com.tulsa.aca.ui.components.NetworkStatusChip
 import com.tulsa.aca.ui.components.PhotoCaptureComponent
 import com.tulsa.aca.utils.toDisplayText
 import com.tulsa.aca.utils.toStatusColor
@@ -519,6 +520,11 @@ fun ChecklistScreen(
                         contentDescription = "Volver"
                     )
                 }
+            },
+            actions = {
+                // Indicador de estado de red
+                NetworkStatusChip(showLabel = false)
+                Spacer(modifier = Modifier.width(8.dp))
             }
         )
 

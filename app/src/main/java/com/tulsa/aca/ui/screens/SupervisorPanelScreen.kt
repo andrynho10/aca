@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tulsa.aca.data.models.Activo
 import com.tulsa.aca.data.models.Usuario
+import com.tulsa.aca.ui.components.NetworkStatusChip
 import com.tulsa.aca.utils.DateUtils
 import com.tulsa.aca.viewmodel.EstadisticasSupervisor
 import com.tulsa.aca.viewmodel.FiltrosReporte
@@ -76,6 +77,9 @@ fun SupervisorPanelScreen(
                 }
             },
             actions = {
+                NetworkStatusChip(showLabel = false)
+                Spacer(modifier = Modifier.width(8.dp))
+
                 IconButton(onClick = { showFilters = !showFilters }) {
                     Icon(
                         imageVector = Icons.Default.FilterList,
