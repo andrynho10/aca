@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +53,7 @@ fun ChecklistScreen(
     viewModel: ChecklistViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val plantillaCompleta by viewModel.plantillaCompleta.collectAsState()
     val respuestas by viewModel.respuestas.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -68,12 +70,14 @@ fun ChecklistScreen(
         viewModel.obtenerPreguntasFiltradas()
     }
 
+    val draftRecuperado by viewModel.draftRecuperado.collectAsState()
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var showHorometroDialog by remember { mutableStateOf(false) }
     var horometroInput by remember { mutableStateOf("") }
+    var showDraftRecoveryDialog by remember { mutableStateOf(false) }
 
     val todasRespondidas = remember(respuestas) {
         viewModel.todasLasPreguntasRespondidas()
@@ -95,9 +99,29 @@ fun ChecklistScreen(
     LaunchedEffect(Unit) {
         android.util.Log.d("ChecklistScreen", UserSession.debugCurrentUserStatus())
     }
-    // Cargar plantilla completa al inicio
+
+    // Buscar draft existente y cargar plantilla completa al inicio
     LaunchedEffect(templateId) {
-        viewModel.cargarPlantillaCompleta(templateId)
+        try {
+            val currentUser = UserSession.requireCurrentUser()
+
+            // Buscar draft existente primero
+            viewModel.buscarDraftExistente(assetId, currentUser.id, templateId)
+
+            // Cargar plantilla
+            viewModel.cargarPlantillaCompleta(templateId, assetId, currentUser.id)
+
+        } catch (e: IllegalStateException) {
+            android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
+            errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
+        }
+    }
+
+    // Mostrar diálogo de recuperación si se encontró un draft
+    LaunchedEffect(draftRecuperado) {
+        if (draftRecuperado != null) {
+            showDraftRecoveryDialog = true
+        }
     }
 
     // FUNCIÓN PARA EJECUTAR EL GUARDADO
@@ -122,6 +146,132 @@ fun ChecklistScreen(
             android.util.Log.e("ChecklistScreen", "ERROR: ${e.message}")
             errorMessage = "Error: Usuario no autenticado. Por favor, vuelve a hacer login."
         }
+    }
+
+    // DIÁLOGO DE RECUPERACIÓN DE DRAFT
+    if (showDraftRecoveryDialog && draftRecuperado != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = "Recuperar",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Inspección Recuperada",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Se encontró una inspección en progreso que no fue completada.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            val draft = draftRecuperado!!
+                            val respondidas = draft.respuestas.values.count { it.respuesta != null }
+                            val totalPreguntas = draft.respuestas.size
+                            val minutosDesdeGuardado = ((System.currentTimeMillis() - draft.ultimoGuardado) / 1000 / 60).toInt()
+
+                            Text(
+                                text = "Detalles de la inspección:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Progreso:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "$respondidas de $totalPreguntas preguntas",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Última vez guardado:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    text = "Hace $minutosDesdeGuardado min",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "¿Deseas continuar donde lo dejaste?",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.restaurarDraft(draftRecuperado!!)
+                        showDraftRecoveryDialog = false
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Continuar",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sí, Continuar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            viewModel.descartarDraft(draftRecuperado!!)
+                            showDraftRecoveryDialog = false
+                        }
+                    }
+                ) {
+                    Text("No, Empezar de Nuevo")
+                }
+            }
+        )
     }
 
     // Dialog para capturar horómetro

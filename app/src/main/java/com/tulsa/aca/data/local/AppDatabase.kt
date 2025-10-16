@@ -20,9 +20,10 @@ import com.tulsa.aca.data.local.entities.*
         ReportePendienteEntity::class,
         FotoPendienteEntity::class,
         CambioPendienteEntity::class,
-        SyncStatusEntity::class
+        SyncStatusEntity::class,
+        DraftChecklistEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun plantillaDao(): PlantillaDao
     abstract fun reportePendienteDao(): ReportePendienteDao
     abstract fun syncStatusDao(): SyncStatusDao
+    abstract fun draftChecklistDao(): DraftChecklistDao
 
     companion object {
         @Volatile

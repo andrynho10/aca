@@ -11,16 +11,21 @@ import com.tulsa.aca.data.repository.OfflinePlantillaRepository
 import com.tulsa.aca.data.repository.OfflineReporteRepository
 import com.tulsa.aca.data.repository.RespuestaConFotos
 import com.tulsa.aca.data.repository.HorometroRepository
+import com.tulsa.aca.data.repository.DraftChecklistRepository
+import com.tulsa.aca.data.repository.DraftChecklistData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 data class RespuestaChecklistItem(
     val preguntaId: Int,
@@ -33,6 +38,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
     private val plantillaRepository = OfflinePlantillaRepository(application)
     private val reporteRepository = OfflineReporteRepository(application)
     private val horometroRepository = HorometroRepository()
+    private val draftRepository = DraftChecklistRepository(application)
 
     private val _plantillaCompleta = MutableStateFlow<PlantillaChecklist?>(null)
     val plantillaCompleta: StateFlow<PlantillaChecklist?> = _plantillaCompleta.asStateFlow()
@@ -78,6 +84,16 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
     // Número de reportes pendientes de sincronización
     val reportesPendientes = reporteRepository.observarReportesPendientes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // Auto-guardado
+    private var autoSaveJob: Job? = null
+    private var draftId: String? = null
+    private var currentAssetId: Int? = null
+    private var currentUserId: String? = null
+    private var currentTemplateId: Int? = null
+
+    private val _draftRecuperado = MutableStateFlow<DraftChecklistData?>(null)
+    val draftRecuperado: StateFlow<DraftChecklistData?> = _draftRecuperado.asStateFlow()
 
     fun actualizarHorometroInicial(horometro: Float?) {
         _horometroInicial.value = horometro
@@ -167,6 +183,139 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     /**
+     * Inicia el auto-guardado periódico cada 30 segundos
+     */
+    private fun iniciarAutoGuardado() {
+        autoSaveJob?.cancel()
+        autoSaveJob = viewModelScope.launch {
+            while (true) {
+                delay(10_000) // 10 segundos
+
+                val assetId = currentAssetId
+                val userId = currentUserId
+                val templateId = currentTemplateId
+                val timestampInicio = _timestampInicio.value
+
+                if (assetId != null && userId != null && templateId != null && timestampInicio != null) {
+                    guardarDraftAutomatico(assetId, userId, templateId, timestampInicio)
+                }
+            }
+        }
+        android.util.Log.d("ChecklistViewModel", "🔄 Auto-guardado iniciado (cada 30 segundos)")
+    }
+
+    /**
+     * Detiene el auto-guardado
+     */
+    private fun detenerAutoGuardado() {
+        autoSaveJob?.cancel()
+        autoSaveJob = null
+        android.util.Log.d("ChecklistViewModel", "⏸️ Auto-guardado detenido")
+    }
+
+    /**
+     * Guarda un draft automáticamente
+     */
+    private suspend fun guardarDraftAutomatico(
+        assetId: Int,
+        userId: String,
+        templateId: Int,
+        timestampInicio: Instant
+    ) {
+        try {
+            val id = draftId ?: UUID.randomUUID().toString().also { draftId = it }
+            val timestampInicioIso = DateTimeFormatter.ISO_INSTANT.format(timestampInicio)
+
+            android.util.Log.d("ChecklistViewModel", "💾 Auto-guardando draft...")
+
+            draftRepository.guardarDraft(
+                draftId = id,
+                activoId = assetId,
+                usuarioId = userId,
+                plantillaId = templateId,
+                respuestas = _respuestas.value,
+                timestampInicio = timestampInicioIso,
+                horometroInicial = _horometroInicial.value,
+                turno = _turnoActual.value
+            )
+
+            android.util.Log.d("ChecklistViewModel", "✅ Draft auto-guardado exitosamente")
+        } catch (e: Exception) {
+            android.util.Log.e("ChecklistViewModel", "❌ Error en auto-guardado: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Busca y recupera un draft existente
+     */
+    suspend fun buscarDraftExistente(
+        assetId: Int,
+        userId: String,
+        templateId: Int
+    ) {
+        try {
+            android.util.Log.d("ChecklistViewModel", "🔍 Buscando draft existente...")
+
+            val draft = draftRepository.obtenerDraftReciente(userId, assetId, templateId)
+
+            if (draft != null) {
+                android.util.Log.d("ChecklistViewModel", "✅ Draft encontrado: ${draft.draftId}")
+                _draftRecuperado.value = draft
+            } else {
+                android.util.Log.d("ChecklistViewModel", "❌ No se encontró draft previo")
+                _draftRecuperado.value = null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ChecklistViewModel", "❌ Error buscando draft: ${e.message}", e)
+            _draftRecuperado.value = null
+        }
+    }
+
+    /**
+     * Restaura un draft recuperado
+     */
+    fun restaurarDraft(draft: DraftChecklistData) {
+        android.util.Log.d("ChecklistViewModel", "♻️ Restaurando draft: ${draft.draftId}")
+
+        draftId = draft.draftId
+        _respuestas.value = draft.respuestas
+        _timestampInicio.value = Instant.parse(draft.timestampInicio)
+        _horometroInicial.value = draft.horometroInicial
+        _turnoActual.value = draft.turno
+
+        // Limpiar el estado de draft recuperado
+        _draftRecuperado.value = null
+
+        android.util.Log.d("ChecklistViewModel", "✅ Draft restaurado con ${draft.respuestas.size} respuestas")
+    }
+
+    /**
+     * Descarta un draft recuperado y comienza uno nuevo
+     */
+    suspend fun descartarDraft(draft: DraftChecklistData) {
+        android.util.Log.d("ChecklistViewModel", "🗑️ Descartando draft: ${draft.draftId}")
+
+        draftRepository.eliminarDraft(draft.draftId)
+        _draftRecuperado.value = null
+
+        android.util.Log.d("ChecklistViewModel", "✅ Draft descartado")
+    }
+
+    /**
+     * Limpia el draft después de completar exitosamente el checklist
+     */
+    private suspend fun limpiarDraftAlCompletar() {
+        val assetId = currentAssetId
+        val userId = currentUserId
+        val templateId = currentTemplateId
+
+        if (assetId != null && userId != null && templateId != null) {
+            android.util.Log.d("ChecklistViewModel", "🧹 Limpiando drafts al completar checklist...")
+            draftRepository.eliminarDraftsPorPlantilla(userId, assetId, templateId)
+        }
+    }
+
+    /**
      * Fuerza la sincronización manual de reportes pendientes
      */
     fun forzarSincronizacion() {
@@ -187,11 +336,15 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun cargarPlantillaCompleta(templateId: Int) {
+    fun cargarPlantillaCompleta(templateId: Int, assetId: Int, userId: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _timestampInicio.value = Instant.now()
 
+            // Guardar contexto para auto-guardado
+            currentAssetId = assetId
+            currentUserId = userId
+            currentTemplateId = templateId
 
             android.util.Log.d("ChecklistViewModel", "Iniciando inspección - Timestamp: ${_timestampInicio.value}")
 
@@ -203,6 +356,10 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
                 if (_respuestas.value.isEmpty()) {
                     plantilla?.let { initializeResponses(it) }
                 }
+
+                // Iniciar auto-guardado
+                iniciarAutoGuardado()
+
             } finally {
                 _isLoading.value = false
             }
@@ -384,6 +541,11 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
                         "✅ Reporte guardado offline (se sincronizará cuando haya conexión)"
                     }
                     android.util.Log.d("ChecklistViewModel", mensaje)
+
+                    // Limpiar drafts y detener auto-guardado
+                    detenerAutoGuardado()
+                    limpiarDraftAlCompletar()
+
                     _saveSuccess.value = true
                     onSuccess()
                 } else {
