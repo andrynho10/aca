@@ -741,7 +741,7 @@ fun ChecklistScreen(
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Agregar comentarios o fotos")
+                                        Text("Agregar comentarios y fotos")
                                     }
                                     else -> {
                                         Icon(
