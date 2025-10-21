@@ -50,6 +50,45 @@ class OfflineReporteRepository(private val context: Context) {
             android.util.Log.d("OfflineReporteRepository", "🌐 Estado conexión: ${if (isConnected) "CONECTADO ✅" else "DESCONECTADO ❌"}")
             android.util.Log.d("OfflineReporteRepository", "═══════════════════════════════════════")
 
+            // 🔍 VALIDACIÓN CRÍTICA DE RESPUESTAS ENTRANTES
+            android.util.Log.d("OfflineReporteRepository", "🔍 === VALIDANDO RESPUESTAS RECIBIDAS ===")
+            android.util.Log.d("OfflineReporteRepository", "   - Total recibidas: ${respuestasConFotos.size}")
+
+            if (respuestasConFotos.isEmpty()) {
+                android.util.Log.e("OfflineReporteRepository", "❌ ERROR CRÍTICO: No se recibieron respuestas")
+                android.util.Log.e("OfflineReporteRepository", "❌ Esto indica un problema en el ViewModel")
+                android.util.Log.e("OfflineReporteRepository", "❌ ActivoID: $activoId, UserID: $usuarioId, TemplateID: $plantillaId")
+                return Result.failure(IllegalStateException("No se recibieron respuestas del checklist"))
+            }
+
+            var respuestasValidas = 0
+            var respuestasNulas = 0
+            var totalFotosRecibidas = 0
+
+            respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
+                val respuesta = respuestaConFotos.respuesta
+                val fotos = respuestaConFotos.fotos
+
+                if (respuesta.respuesta == null) {
+                    respuestasNulas++
+                    android.util.Log.w("OfflineReporteRepository", "⚠️ Respuesta $index con valor null")
+                } else {
+                    respuestasValidas++
+                }
+
+                totalFotosRecibidas += fotos.size
+                android.util.Log.d("OfflineReporteRepository", "   - Respuesta $index: PreguntaId=${respuesta.preguntaId}, Valor=${respuesta.respuesta}, Fotos=${fotos.size}")
+            }
+
+            android.util.Log.d("OfflineReporteRepository", "📊 RESUMEN DE VALIDACIÓN:")
+            android.util.Log.d("OfflineReporteRepository", "   - Respuestas válidas: $respuestasValidas")
+            android.util.Log.d("OfflineReporteRepository", "   - Respuestas nulas: $respuestasNulas")
+            android.util.Log.d("OfflineReporteRepository", "   - Total fotos: $totalFotosRecibidas")
+
+            if (respuestasNulas > 0) {
+                android.util.Log.w("OfflineReporteRepository", "⚠️ Hay $respuestasNulas respuestas con valor null")
+            }
+
             if (isConnected) {
                 // Si hay conexión, intentar crear directamente en el servidor
                 android.util.Log.d("OfflineReporteRepository", "📡 Intentando crear en servidor...")
@@ -86,9 +125,39 @@ class OfflineReporteRepository(private val context: Context) {
             android.util.Log.w("OfflineReporteRepository", "═══════════════════════════════════════")
 
             // Serializar respuestas (sin fotos)
+            android.util.Log.d("OfflineReporteRepository", "🔄 === INICIANDO SERIALIZACIÓN A JSON ===")
             val respuestasSinFotos = respuestasConFotos.map { it.respuesta }
+            android.util.Log.d("OfflineReporteRepository", "   - Respuestas para serializar: ${respuestasSinFotos.size}")
+
+            respuestasSinFotos.forEachIndexed { index, respuesta ->
+                android.util.Log.d("OfflineReporteRepository", "     - Respuesta $index: PreguntaId=${respuesta.preguntaId}, Valor=${respuesta.respuesta}")
+            }
+
             val respuestasJson = gson.toJson(respuestasSinFotos)
-            android.util.Log.d("OfflineReporteRepository", "✅ Respuestas serializadas: ${respuestasJson.length} caracteres")
+            android.util.Log.d("OfflineReporteRepository", "✅ JSON generado:")
+            android.util.Log.d("OfflineReporteRepository", "   - Length: ${respuestasJson.length} caracteres")
+            android.util.Log.d("OfflineReporteRepository", "   - Preview: ${respuestasJson.take(200)}...")
+
+            // 🔍 VALIDACIÓN CRÍTICA DEL JSON
+            if (respuestasJson.isBlank() || respuestasJson == "null" || respuestasJson == "[]") {
+                android.util.Log.e("OfflineReporteRepository", "❌ ERROR CRÍTICO: JSON inválido generado")
+                android.util.Log.e("OfflineReporteRepository", "❌ JSON: '$respuestasJson'")
+                android.util.Log.e("OfflineReporteRepository", "❌ Esto podría causar inspecciones vacías")
+                return Result.failure(IllegalStateException("JSON generado es inválido: '$respuestasJson'"))
+            }
+
+            // Verificar que el JSON se puede deserializar
+            try {
+                val testDeserializacion = gson.fromJson(respuestasJson, Array<com.tulsa.aca.data.models.RespuestaReporte>::class.java)
+                android.util.Log.d("OfflineReporteRepository", "✅ Test de deserialización exitoso: ${testDeserializacion?.size} respuestas")
+                if (testDeserializacion == null || testDeserializacion.isEmpty()) {
+                    android.util.Log.e("OfflineReporteRepository", "❌ ERROR: Deserialización devuelve null o vacío")
+                    return Result.failure(IllegalStateException("JSON no se puede deserializar correctamente"))
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("OfflineReporteRepository", "❌ ERROR: Falló deserialización de prueba", e)
+                return Result.failure(IllegalStateException("JSON generado no es válido: ${e.message}"))
+            }
 
             // Crear entidad de reporte pendiente
             val reportePendiente = ReportePendienteEntity(
@@ -113,7 +182,7 @@ class OfflineReporteRepository(private val context: Context) {
             android.util.Log.d("OfflineReporteRepository", "✅ Reporte insertado en tabla reportes_pendientes")
 
             // Guardar fotos pendientes
-            var totalFotos = 0
+            var totalFotosGuardadas = 0
             respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
                 respuestaConFotos.fotos.forEach { uri ->
                     val fotoPendiente = FotoPendienteEntity(
@@ -125,11 +194,11 @@ class OfflineReporteRepository(private val context: Context) {
                         urlStorage = null
                     )
                     reportePendienteDao.insertFotoPendiente(fotoPendiente)
-                    totalFotos++
+                    totalFotosGuardadas++
                 }
             }
 
-            android.util.Log.d("OfflineReporteRepository", "📸 $totalFotos fotos guardadas en tabla fotos_pendientes")
+            android.util.Log.d("OfflineReporteRepository", "📸 $totalFotosGuardadas fotos guardadas en tabla fotos_pendientes")
 
             // Verificar que se guardó
             val count = reportePendienteDao.getReportesPendientesCount()

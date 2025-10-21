@@ -275,13 +275,86 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
      * Restaura un draft recuperado
      */
     fun restaurarDraft(draft: DraftChecklistData) {
-        android.util.Log.d("ChecklistViewModel", "♻️ Restaurando draft: ${draft.draftId}")
+        // 🔍 LOGGING DETALLADO - RECUPERACIÓN DE DRAFT
+        android.util.Log.d("ChecklistViewModel", "🔄 === RECUPERANDO DRAFT ===")
+        android.util.Log.d("ChecklistViewModel", "   - Draft ID: ${draft.draftId}")
+        android.util.Log.d("ChecklistViewModel", "   - Respuestas en draft: ${draft.respuestas.size}")
+        android.util.Log.d("ChecklistViewModel", "   - Respuestas actuales: ${_respuestas.value.size}")
+        android.util.Log.d("ChecklistViewModel", "   - Timestamp draft: ${draft.timestampInicio}")
+        android.util.Log.d("ChecklistViewModel", "   - Último guardado: ${draft.ultimoGuardado}")
 
+        // 🔍 VALIDACIÓN CRÍTICA ANTES DE RESTAURAR
+        if (draft.respuestas.isEmpty()) {
+            android.util.Log.e("ChecklistViewModel", "❌ ERROR: El draft no tiene respuestas")
+            android.util.Log.e("ChecklistViewModel", "❌ Esto podría indicar corrupción de datos")
+            _draftRecuperado.value = null
+            return
+        }
+
+        // Verificar integridad de respuestas en draft
+        var validasEnDraft = 0
+        var nulasEnDraft = 0
+        draft.respuestas.forEach { (preguntaId, respuesta) ->
+            if (respuesta.respuesta != null) {
+                validasEnDraft++
+            } else {
+                nulasEnDraft++
+            }
+            android.util.Log.d("ChecklistViewModel", "   - Draft Pregunta $preguntaId: ${respuesta.respuesta}")
+        }
+
+        android.util.Log.d("ChecklistViewModel", "📊 Análisis del draft:")
+        android.util.Log.d("ChecklistViewModel", "   - Válidas: $validasEnDraft")
+        android.util.Log.d("ChecklistViewModel", "   - Nulas: $nulasEnDraft")
+
+        // 🔍 PREVENIR SOBRESCRITURA DE RESPUESTAS VÁLIDAS
+        val currentSize = _respuestas.value.size
+        if (currentSize > 0) {
+            android.util.Log.w("ChecklistViewModel", "⚠️ ADVERTENCIA: Ya existen $currentSize respuestas actuales")
+            android.util.Log.w("ChecklistViewModel", "⚠️ Comparando con draft para decidir si restaurar...")
+
+            // Comparar progreso
+            var currentValidas = 0
+            _respuestas.value.values.forEach { respuesta ->
+                if (respuesta.respuesta != null) currentValidas++
+            }
+
+            android.util.Log.w("ChecklistViewModel", "   - Respuestas válidas actuales: $currentValidas")
+            android.util.Log.w("ChecklistViewModel", "   - Respuestas válidas en draft: $validasEnDraft")
+
+            if (currentValidas >= validasEnDraft) {
+                android.util.Log.w("ChecklistViewModel", "🛡️ NO se restaura draft: progreso actual >= draft")
+                android.util.Log.w("ChecklistViewModel", "   - Actual: $currentValidas/$currentSize")
+                android.util.Log.w("ChecklistViewModel", "   - Draft: $validasEnDraft/${draft.respuestas.size}")
+                _draftRecuperado.value = null
+                return
+            } else {
+                android.util.Log.w("ChecklistViewModel", "🔄 Se restaura draft: tiene más progreso")
+                android.util.Log.w("ChecklistViewModel", "   - Actual: $currentValidas/$currentSize")
+                android.util.Log.w("ChecklistViewModel", "   - Draft: $validasEnDraft/${draft.respuestas.size}")
+            }
+        }
+
+        // Restaurar respuestas con logging
+        android.util.Log.d("ChecklistViewModel", "🔄 Restaurando ${draft.respuestas.size} respuestas del draft...")
         draftId = draft.draftId
         _respuestas.value = draft.respuestas
         _timestampInicio.value = Instant.parse(draft.timestampInicio)
         _horometroInicial.value = draft.horometroInicial
         _turnoActual.value = draft.turno
+
+        // Verificación post-restauración
+        android.util.Log.d("ChecklistViewModel", "✅ === DRAFT RESTAURADO ===")
+        android.util.Log.d("ChecklistViewModel", "   - Respuestas restauradas: ${_respuestas.value.size}")
+        android.util.Log.d("ChecklistViewModel", "   - Timestamp: ${_timestampInicio.value}")
+        android.util.Log.d("ChecklistViewModel", "   - Horómetro: ${_horometroInicial.value}")
+        android.util.Log.d("ChecklistViewModel", "   - Turno: ${_turnoActual.value}")
+
+        // Validar que la restauración fue exitosa
+        if (_respuestas.value.isEmpty()) {
+            android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO: Las respuestas están vacías después de restaurar")
+            android.util.Log.e("ChecklistViewModel", "❌ Esto indica un problema grave en la recuperación")
+        }
 
         // Limpiar el estado de draft recuperado
         _draftRecuperado.value = null
@@ -338,6 +411,13 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun cargarPlantillaCompleta(templateId: Int, assetId: Int, userId: String) {
         viewModelScope.launch {
+            // 🔍 LOGGING DETALLADO - INICIO DE CARGA
+            android.util.Log.d("ChecklistViewModel", "🚀 === INICIANDO CARGA DE PLANTILLA COMPLETA ===")
+            android.util.Log.d("ChecklistViewModel", "   Template ID: $templateId")
+            android.util.Log.d("ChecklistViewModel", "   Asset ID: $assetId")
+            android.util.Log.d("ChecklistViewModel", "   User ID: $userId")
+            android.util.Log.d("ChecklistViewModel", "   Respuestas actuales: ${_respuestas.value.size}")
+
             _isLoading.value = true
             _timestampInicio.value = Instant.now()
 
@@ -346,21 +426,73 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
             currentUserId = userId
             currentTemplateId = templateId
 
-            android.util.Log.d("ChecklistViewModel", "Iniciando inspección - Timestamp: ${_timestampInicio.value}")
+            android.util.Log.d("ChecklistViewModel", "🕐 Timestamp inicio: ${_timestampInicio.value}")
 
             try {
+                android.util.Log.d("ChecklistViewModel", "📥 Obteniendo plantilla del repository...")
                 val plantilla = plantillaRepository.obtenerPlantillaCompleta(templateId)
+
+                if (plantilla == null) {
+                    android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO: Plantilla nula desde repository")
+                    android.util.Log.e("ChecklistViewModel", "❌ Template ID: $templateId")
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                android.util.Log.d("ChecklistViewModel", "✅ Plantilla obtenida exitosamente:")
+                android.util.Log.d("ChecklistViewModel", "   - ID: ${plantilla.id}")
+                android.util.Log.d("ChecklistViewModel", "   - Nombre: ${plantilla.nombre}")
+                android.util.Log.d("ChecklistViewModel", "   - Tipo Activo: ${plantilla.tipoActivo}")
+                android.util.Log.d("ChecklistViewModel", "   - Categorías: ${plantilla.categorias.size}")
+
+                val totalPreguntas = plantilla.categorias.sumOf { it.preguntas.size }
+                android.util.Log.d("ChecklistViewModel", "   - Total preguntas: $totalPreguntas")
+
                 _plantillaCompleta.value = plantilla
 
-                // Solo inicializar si aún no hay respuestas (para evitar el limpiado por girar pantalla)
-                if (_respuestas.value.isEmpty()) {
-                    plantilla?.let { initializeResponses(it) }
+                // 🔍 VALIDACIÓN CRÍTICA ANTES DE INICIALIZAR
+                if (_respuestas.value.isNotEmpty()) {
+                    android.util.Log.w("ChecklistViewModel", "⚠️ El mapa de respuestas ya contiene datos:")
+                    android.util.Log.w("ChecklistViewModel", "   - Respuestas existentes: ${_respuestas.value.size}")
+                    android.util.Log.w("ChecklistViewModel", "   - NO se inicializará para evitar sobreescribir")
+
+                    // Verificar integridad de respuestas existentes
+                    val validas = _respuestas.value.values.count { it.respuesta != null }
+                    android.util.Log.w("ChecklistViewModel", "   - Respuestas válidas: $validas/${_respuestas.value.size}")
+                } else {
+                    android.util.Log.d("ChecklistViewModel", "🎯 Mapa vacío, inicializando respuestas...")
+                    plantilla.let {
+                        initializeResponses(it)
+
+                        // Verificar que la inicialización funcionó
+                        android.util.Log.d("ChecklistViewModel", "🔍 Post-inicialización:")
+                        android.util.Log.d("ChecklistViewModel", "   - Respuestas en mapa: ${_respuestas.value.size}")
+                        android.util.Log.d("ChecklistViewModel", "   - Esperadas: $totalPreguntas")
+
+                        if (_respuestas.value.size != totalPreguntas) {
+                            android.util.Log.e("ChecklistViewModel", "❌ ERROR: Mismatch en inicialización!")
+                            android.util.Log.e("ChecklistViewModel", "   - Esperadas: $totalPreguntas")
+                            android.util.Log.e("ChecklistViewModel", "   - Inicializadas: ${_respuestas.value.size}")
+                        }
+                    }
                 }
 
                 // Iniciar auto-guardado
+                android.util.Log.d("ChecklistViewModel", "🔄 Iniciando auto-guardado...")
                 iniciarAutoGuardado()
 
+            } catch (e: Exception) {
+                android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO cargando plantilla:", e)
+                android.util.Log.e("ChecklistViewModel", "   - Error: ${e.message}")
+                android.util.Log.e("ChecklistViewModel", "   - Template ID: $templateId")
+                android.util.Log.e("ChecklistViewModel", "   - Asset ID: $assetId")
+                android.util.Log.e("ChecklistViewModel", "   - User ID: $userId")
             } finally {
+                android.util.Log.d("ChecklistViewModel", "🏁 === CARGA DE PLANTILLA COMPLETADA ===")
+                android.util.Log.d("ChecklistViewModel", "📊 Estado final:")
+                android.util.Log.d("ChecklistViewModel", "   - Loading: ${_isLoading.value}")
+                android.util.Log.d("ChecklistViewModel", "   - Plantilla: ${_plantillaCompleta.value?.nombre}")
+                android.util.Log.d("ChecklistViewModel", "   - Respuestas: ${_respuestas.value.size}")
                 _isLoading.value = false
             }
         }
@@ -369,10 +501,22 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
 
 
     private fun initializeResponses(plantilla: PlantillaChecklist) {
+        // 🔍 LOGGING DETALLADO - INICIALIZACIÓN
+        android.util.Log.d("ChecklistViewModel", "🎯 === INICIALIZANDO RESPUESTAS ===")
+        android.util.Log.d("ChecklistViewModel", "   Plantilla ID: ${plantilla.id}")
+        android.util.Log.d("ChecklistViewModel", "   Plantilla nombre: ${plantilla.nombre}")
+        android.util.Log.d("ChecklistViewModel", "   Categorías: ${plantilla.categorias.size}")
+
         val respuestasIniciales = mutableMapOf<Int, RespuestaChecklistItem>()
+        var totalPreguntas = 0
 
         plantilla.categorias.forEach { categoria ->
+            android.util.Log.d("ChecklistViewModel", "   Categoría: ${categoria.nombre} (${categoria.preguntas.size} preguntas)")
+
             categoria.preguntas.forEach { pregunta ->
+                totalPreguntas++
+                android.util.Log.d("ChecklistViewModel", "     - Pregunta ${pregunta.id}: ${pregunta.texto.take(50)}...")
+
                 respuestasIniciales[pregunta.id] = RespuestaChecklistItem(
                     preguntaId = pregunta.id,
                     respuesta = true
@@ -380,7 +524,32 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
 
-        _respuestas.value = respuestasIniciales
+        android.util.Log.d("ChecklistViewModel", "📊 RESUMEN DE INICIALIZACIÓN:")
+        android.util.Log.d("ChecklistViewModel", "   - Total preguntas encontradas: $totalPreguntas")
+        android.util.Log.d("ChecklistViewModel", "   - Respuestas inicializadas: ${respuestasIniciales.size}")
+        android.util.Log.d("ChecklistViewModel", "   - Mapa actual tiene: ${_respuestas.value.size} respuestas")
+
+        // Verificación crítica antes de asignar
+        if (respuestasIniciales.isEmpty()) {
+            android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO: No se encontraron preguntas en la plantilla")
+            android.util.Log.e("ChecklistViewModel", "❌ Plantilla: ${plantilla.nombre} (${plantilla.id})")
+            android.util.Log.e("ChecklistViewModel", "❌ Categorías encontradas: ${plantilla.categorias.size}")
+            plantilla.categorias.forEach { categoria ->
+                android.util.Log.e("ChecklistViewModel", "   - Categoría '${categoria.nombre}': ${categoria.preguntas.size} preguntas")
+            }
+        }
+
+        // Solo asignar si está vacío para evitar sobreescribir (previene race conditions)
+        val currentSize = _respuestas.value.size
+        if (currentSize > 0) {
+            android.util.Log.w("ChecklistViewModel", "⚠️ El mapa ya tiene $currentSize respuestas. NO se sobrecribe.")
+            android.util.Log.w("ChecklistViewModel", "⚠️ Esto puede indicar una race condition o inicialización múltiple")
+        } else {
+            android.util.Log.d("ChecklistViewModel", "✅ Asignando ${respuestasIniciales.size} respuestas iniciales")
+            _respuestas.value = respuestasIniciales
+        }
+
+        android.util.Log.d("ChecklistViewModel", "🏁 === INICIALIZACIÓN COMPLETADA ===")
     }
 
     fun actualizarRespuesta(preguntaId: Int, respuesta: Boolean) {
@@ -443,7 +612,28 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
+        // 🔍 LOGGING DETALLADO - INICIO DE GUARDADO
+        android.util.Log.d("ChecklistViewModel", "🚀 === INICIANDO GUARDADO DE CHECKLIST ===")
+        android.util.Log.d("ChecklistViewModel", "📊 Estado actual de respuestas:")
+        android.util.Log.d("ChecklistViewModel", "   - Total preguntas en mapa: ${_respuestas.value.size}")
+        android.util.Log.d("ChecklistViewModel", "   - Respuestas con valor: ${_respuestas.value.values.count { it.respuesta != null }}")
+        android.util.Log.d("ChecklistViewModel", "   - Respuestas nulas: ${_respuestas.value.values.count { it.respuesta == null }}")
+        android.util.Log.d("ChecklistViewModel", "   - AssetID: $assetId, UserID: $userId, TemplateID: $templateId")
+
+        // Validación mejorada: verificar que tenemos respuestas
+        if (_respuestas.value.isEmpty()) {
+            android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO: El mapa de respuestas está completamente vacío")
+            android.util.Log.e("ChecklistViewModel", "❌ Posibles causas:")
+            android.util.Log.e("ChecklistViewModel", "   - initializeResponses() no se ejecutó")
+            android.util.Log.e("ChecklistViewModel", "   - El mapa fue limpiado accidentalmente")
+            android.util.Log.e("ChecklistViewModel", "   - Race condition con auto-guardado")
+            onError("Error interno: No hay respuestas registradas. Por favor, reinicie la inspección.")
+            return
+        }
+
         if (!todasLasPreguntasRespondidas()) {
+            val sinResponder = _respuestas.value.values.count { it.respuesta == null }
+            android.util.Log.w("ChecklistViewModel", "⚠️ Hay $sinResponder preguntas sin responder")
             onError("Por favor completa todas las preguntas antes de enviar.")
             return
         }
@@ -451,6 +641,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         // Validar que las respuestas "Malo" tengan comentario O foto
         val (validacionOk, errorValidacion) = validarRespuestasMalas()
         if (!validacionOk) {
+            android.util.Log.w("ChecklistViewModel", "⚠️ Validación de respuestas malas fallida: $errorValidacion")
             onError(errorValidacion ?: "Error de validación")
             return
         }
@@ -515,35 +706,128 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
                 val zonaHoraria = java.util.TimeZone.getDefault().id
                 android.util.Log.d("ChecklistViewModel", "   Zona horaria dispositivo: $zonaHoraria")
 
-                // DEBUG RESPUESTAS
-                android.util.Log.d("ChecklistViewModel", "📋 PREPARANDO RESPUESTAS:")
-                android.util.Log.d("ChecklistViewModel", "   Total: ${_respuestas.value.size}")
+                // 🔍 DEBUG DETALLADO DE RESPUESTAS
+                android.util.Log.d("ChecklistViewModel", "📋 === ANÁLISIS DETALLADO DE RESPUESTAS ===")
+                android.util.Log.d("ChecklistViewModel", "   Total en mapa: ${_respuestas.value.size}")
+
+                var buenas = 0
+                var malas = 0
+                var nulas = 0
+                var conComentarios = 0
+                var conFotos = 0
 
                 _respuestas.value.forEach { (preguntaId, item) ->
-                    val estado = if (item.respuesta == true) "✅ BUENO" else if (item.respuesta == false) "❌ MALO" else "❓ NULL"
-                    android.util.Log.d("ChecklistViewModel", "   - Pregunta $preguntaId: $estado")
-                    if (item.respuesta == false) {
-                        android.util.Log.d("ChecklistViewModel", "     Comentario: '${item.comentario}'")
+                    val estado = if (item.respuesta == true) {
+                        buenas++
+                        "✅ BUENO"
+                    } else if (item.respuesta == false) {
+                        malas++
+                        "❌ MALO"
+                    } else {
+                        nulas++
+                        "❓ NULL"
                     }
-                    if (item.fotos.isNotEmpty()) {
-                        android.util.Log.d("ChecklistViewModel", "     Fotos: ${item.fotos.size}")
+
+                    if (item.comentario.isNotBlank()) conComentarios++
+                    if (item.fotos.isNotEmpty()) conFotos++
+
+                    android.util.Log.d("ChecklistViewModel", "   - Pregunta $preguntaId: $estado")
+                    android.util.Log.d("ChecklistViewModel", "     • Respuesta cruda: ${item.respuesta}")
+                    android.util.Log.d("ChecklistViewModel", "     • Comentario length: ${item.comentario.length}")
+                    android.util.Log.d("ChecklistViewModel", "     • Fotos count: ${item.fotos.size}")
+
+                    if (item.respuesta == false) {
+                        android.util.Log.d("ChecklistViewModel", "     • Comentario: '${item.comentario}'")
+                        item.fotos.forEachIndexed { index, uri ->
+                            android.util.Log.d("ChecklistViewModel", "       Foto $index: $uri")
+                        }
                     }
                 }
 
-                // Convertir respuestas
-                val respuestasConFotos = _respuestas.value.values.map { item ->
+                android.util.Log.d("ChecklistViewModel", "📊 RESUMEN DE RESPUESTAS:")
+                android.util.Log.d("ChecklistViewModel", "   - Buenas: $buenas")
+                android.util.Log.d("ChecklistViewModel", "   - Malas: $malas")
+                android.util.Log.d("ChecklistViewModel", "   - Nulas: $nulas")
+                android.util.Log.d("ChecklistViewModel", "   - Con comentarios: $conComentarios")
+                android.util.Log.d("ChecklistViewModel", "   - Con fotos: $conFotos")
+
+                // 🔍 VALIDACIÓN CRÍTICA ANTES DE CONVERTIR
+                if (_respuestas.value.isEmpty()) {
+                    android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO: Mapa de respuestas vacío ANTES de convertir")
+                    throw IllegalStateException("El mapa de respuestas está vacío. No se puede continuar.")
+                }
+
+                // 🔍 VALIDACIÓN NUEVA: Comparar con preguntas esperadas
+                val plantilla = _plantillaCompleta.value
+                if (plantilla != null) {
+                    val totalPreguntasEsperadas = plantilla.categorias.sumOf { it.preguntas.size }
+                    val totalRespuestasActuales = _respuestas.value.size
+
+                    android.util.Log.d("ChecklistViewModel", "🔍 VALIDACIÓN DE CANTIDAD:")
+                    android.util.Log.d("ChecklistViewModel", "   - Preguntas esperadas: $totalPreguntasEsperadas")
+                    android.util.Log.d("ChecklistViewModel", "   - Respuestas actuales: $totalRespuestasActuales")
+
+                    if (totalRespuestasActuales != totalPreguntasEsperadas) {
+                        android.util.Log.e("ChecklistViewModel", "❌ ERROR CRÍTICO: Mismatch en cantidad de respuestas")
+                        android.util.Log.e("ChecklistViewModel", "❌ Preguntas esperadas: $totalPreguntasEsperadas")
+                        android.util.Log.e("ChecklistViewModel", "❌ Respuestas actuales: $totalRespuestasActuales")
+                        android.util.Log.e("ChecklistViewModel", "❌ Diferencia: ${totalPreguntasEsperadas - totalRespuestasActuales}")
+
+                        // Listar preguntas faltantes
+                        val idsEsperados = plantilla.categorias.flatMap { it.preguntas }.map { it.id }.toSet()
+                        val idsActuales = _respuestas.value.keys
+                        val faltantes = idsEsperados - idsActuales
+                        val sobrantes = idsActuales - idsEsperados
+
+                        if (faltantes.isNotEmpty()) {
+                            android.util.Log.e("ChecklistViewModel", "❌ Preguntas faltantes: $faltantes")
+                        }
+                        if (sobrantes.isNotEmpty()) {
+                            android.util.Log.w("ChecklistViewModel", "⚠️ Preguntas sobrantes: $sobrantes")
+                        }
+
+                        throw IllegalStateException(
+                            "Error crítico: Hay $totalRespuestasActuales respuestas pero se esperaban $totalPreguntasEsperadas. " +
+                            "Faltantes: ${faltantes.size}, Sobrantes: ${sobrantes.size}"
+                        )
+                    }
+                } else {
+                    android.util.Log.w("ChecklistViewModel", "⚠️ Plantilla es null, no se puede validar cantidad de respuestas")
+                }
+
+                if (nulas > 0) {
+                    android.util.Log.w("ChecklistViewModel", "⚠️ ADVERTENCIA: Hay $nulas respuestas nulas en el mapa")
+                }
+
+                // Convertir respuestas con logging detallado
+                android.util.Log.d("ChecklistViewModel", "🔄 === INICIANDO CONVERSIÓN A RespuestaConFotos ===")
+                val respuestasConFotos = _respuestas.value.values.mapIndexed { index, item ->
+                    android.util.Log.d("ChecklistViewModel", "   Convirtiendo respuesta $index:")
+                    android.util.Log.d("ChecklistViewModel", "     - preguntaId: ${item.preguntaId}")
+                    android.util.Log.d("ChecklistViewModel", "     - respuesta: ${item.respuesta}")
+                    android.util.Log.d("ChecklistViewModel", "     - comentario: '${item.comentario.take(50)}...'")
+                    android.util.Log.d("ChecklistViewModel", "     - fotos: ${item.fotos.size}")
+
                     RespuestaConFotos(
                         respuesta = RespuestaReporte(
                             preguntaId = item.preguntaId,
                             reporteId = "",
-                            respuesta = item.respuesta ?: true,
+                            respuesta = item.respuesta ?: true, // Default a true para seguridad
                             comentario = item.comentario.takeIf { it.isNotBlank() }
                         ),
                         fotos = item.fotos
                     )
                 }
 
-                android.util.Log.d("ChecklistViewModel", "📤 ENVIANDO AL REPOSITORY:")
+                android.util.Log.d("ChecklistViewModel", "✅ Conversión completada. Total convertidas: ${respuestasConFotos.size}")
+
+                if (respuestasConFotos.size != _respuestas.value.size) {
+                    android.util.Log.e("ChecklistViewModel", "❌ ERROR: Mismatch en conversion!")
+                    android.util.Log.e("ChecklistViewModel", "   - Original: ${_respuestas.value.size}")
+                    android.util.Log.e("ChecklistViewModel", "   - Convertidas: ${respuestasConFotos.size}")
+                }
+
+                android.util.Log.d("ChecklistViewModel", "📤 === ENVIANDO AL REPOSITORY ===")
                 android.util.Log.d("ChecklistViewModel", "   Activo: $assetId")
                 android.util.Log.d("ChecklistViewModel", "   Usuario: $userId")
                 android.util.Log.d("ChecklistViewModel", "   Plantilla: $templateId")
