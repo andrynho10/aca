@@ -54,6 +54,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import androidx.core.content.ContextCompat
 
+/**
+ * Aplicación desarrollada por: Andrés Amaya Garcés
+ * Proyecto: Checklist Grúas Horquilla
+ * Año: 2025
+ */
 
 class MainActivity : ComponentActivity() {
 
@@ -428,7 +433,7 @@ fun ACAApp(
                 }
             )
         }
-        // ⭐ NUEVAS RUTAS: Horómetros Pendientes
+        // Horómetros Pendientes
         composable(Screen.HorometrosPendientes.route) {
             HorometrosPendientesScreen(
                 onNavigateBack = {
@@ -440,7 +445,7 @@ fun ACAApp(
             )
         }
 
-        // ⭐ NUEVA RUTA: Cerrar Horómetro
+        // Cerrar Horómetro
         composable(
             route = Screen.CerrarHorometro.route,
             arguments = listOf(navArgument("reporteId") { type = NavType.StringType })
