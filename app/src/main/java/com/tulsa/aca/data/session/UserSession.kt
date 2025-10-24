@@ -3,6 +3,7 @@ package com.tulsa.aca.data.session
 import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.repository.AuthRepository
 import com.tulsa.aca.utils.CacheManager
+import com.tulsa.aca.utils.FcmManager
 import java.util.concurrent.atomic.AtomicReference
 
 object UserSession {
@@ -24,26 +25,41 @@ object UserSession {
     suspend fun logoutCompleto(): Boolean {
         return try {
             android.util.Log.d("UserSession", "=== INICIANDO LOGOUT COMPLETO ===")
-            val usuarioActual = currentUserRef.get()?.nombreCompleto ?: "Usuario desconocido"
+            val usuarioActual = currentUserRef.get()
+            val nombreUsuario = usuarioActual?.nombreCompleto ?: "Usuario desconocido"
 
-            // 1. Cerrar sesión en Supabase
+            // 1. Eliminar token FCM de Supabase (para que no reciba más notificaciones)
+            if (usuarioActual != null) {
+                try {
+                    val fcmSuccess = FcmManager.unregisterFcmToken(usuarioActual.id)
+                    if (fcmSuccess) {
+                        android.util.Log.d("UserSession", "Token FCM eliminado de '$nombreUsuario'")
+                    } else {
+                        android.util.Log.w("UserSession", "No se pudo eliminar token FCM de '$nombreUsuario'")
+                    }
+                } catch (fcmError: Exception) {
+                    android.util.Log.e("UserSession", "Error eliminando token FCM: ${fcmError.message}")
+                }
+            }
+
+            // 2. Cerrar sesión en Supabase
             val authRepository = AuthRepository()
             val result = authRepository.logout()
 
             if (result.isSuccess) {
-                android.util.Log.d("UserSession", "Sesión de '$usuarioActual' cerrada en Supabase")
+                android.util.Log.d("UserSession", "Sesión de '$nombreUsuario' cerrada en Supabase")
             } else {
                 android.util.Log.w("UserSession", "Error cerrando sesión en Supabase: ${result.exceptionOrNull()?.message}")
             }
 
-            // 2. LIMPIAR TODOS LOS CACHÉS
+            // 3. LIMPIAR TODOS LOS CACHÉS
             android.util.Log.d("UserSession", "Limpiando cachés...")
             CacheManager.limpiarTodosLosCaches()
 
-            // 3. Limpiar sesión local
+            // 4. Limpiar sesión local
             logout()
 
-            android.util.Log.d("UserSession", "Logout completo exitoso para '$usuarioActual'")
+            android.util.Log.d("UserSession", "Logout completo exitoso para '$nombreUsuario'")
             true
         } catch (e: Exception) {
             android.util.Log.e("UserSession", "Error crítico en logout: ${e.message}", e)

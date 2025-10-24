@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "755892164949",
+    "project_id": "aca-tulsa",
+    "storage_bucket": "aca-tulsa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:755892164949:android:99170175d1451d26ad77dc",
+        "android_client_info": {
+          "package_name": "com.tulsa.aca"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKb7EeqqPQ-RCVe9XAAFi51Yuajn07bAw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

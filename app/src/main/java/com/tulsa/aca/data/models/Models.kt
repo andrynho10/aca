@@ -199,3 +199,18 @@ data class TopProblema(
     @SerialName("porcentaje_fallo")
     val porcentajeFallo: Float
 )
+
+// Token FCM para notificaciones push
+@Serializable
+data class FcmToken(
+    val id: String? = null,
+    @SerialName("usuario_id")
+    val usuarioId: String,
+    val token: String,
+    @SerialName("dispositivo_info")
+    val dispositivoInfo: String? = null,
+    @SerialName("created_at")
+    val createdAt: String? = null,
+    @SerialName("updated_at")
+    val updatedAt: String? = null
+)

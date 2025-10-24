@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.tulsa.aca.data.models.Usuario
 import com.tulsa.aca.data.repository.AuthRepository
 import com.tulsa.aca.data.session.UserSession
+import com.tulsa.aca.utils.FcmManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,6 +45,20 @@ class LoginViewModel : ViewModel() {
                 onSuccess = { usuario ->
                     // Actualizar UserSession para compatibilidad
                     UserSession.login(usuario)
+
+                    // Registrar token FCM para notificaciones push
+                    viewModelScope.launch {
+                        try {
+                            val success = FcmManager.registerFcmToken(usuario.id)
+                            if (success) {
+                                android.util.Log.d("LoginViewModel", "Token FCM registrado exitosamente")
+                            } else {
+                                android.util.Log.e("LoginViewModel", "Error registrando token FCM")
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("LoginViewModel", "Excepción al registrar token FCM", e)
+                        }
+                    }
 
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
