@@ -38,8 +38,8 @@ android {
         applicationId = "com.tulsa.aca"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.0.1"
+        versionCode = 4
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -53,10 +53,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = true  // Activo: reduce tamaño APK
+            isShrinkResources = true  // Activo: elimina recursos no usados
             proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"), // Cambiado de optimize a básico
+                getDefaultProguardFile("proguard-android.txt"), // Básico, no agresivo
                 "proguard-rules.pro"
             )
         }

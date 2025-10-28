@@ -1,8 +1,9 @@
 # Add project specific ProGuard rules here.
 
-# IMPORTANTE: Desactivar optimizaciones agresivas de R8
+# Configuración balanceada: Ofuscar pero no optimizar agresivamente
+# Esto reduce el tamaño del APK manteniendo compatibilidad con Kotlinx Serialization
 -dontoptimize
--dontobfuscate
+# Permitimos ofuscación pero protegiendo las clases críticas
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #
@@ -105,8 +106,11 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 
-# Preservar nombres de clases para debugging
--keep class com.tulsa.aca.** { *; }
+# Proteger solo lo necesario (permite ofuscar ViewModels, Repositories, etc.)
+# Mantener Activities, Fragments y Composables
+-keep class com.tulsa.aca.MainActivity { *; }
+-keep class com.tulsa.aca.ui.screens.** { *; }
+-keep class com.tulsa.aca.ui.components.** { *; }
 
 # IMPORTANTE: Mantener nombres de campos para serialización JSON
 # Esto es crítico para que Supabase pueda mapear los campos correctamente

@@ -71,30 +71,36 @@ class OfflinePlantillaRepository(private val context: Context) {
                 val categorias = plantillaDao.getCategoriasByPlantilla(plantillaId)
                 android.util.Log.d("OfflinePlantillaRepository", "📋 Categorías en cache: ${categorias.size}")
 
-                val categoriasConPreguntas = categorias.map { categoriaEntity ->
-                    val preguntas = plantillaDao.getPreguntasByCategoria(categoriaEntity.id)
-                    android.util.Log.d("OfflinePlantillaRepository", "   └─ Categoría '${categoriaEntity.nombre}': ${preguntas.size} preguntas")
+                // IMPORTANTE: Si el cache tiene 0 categorías, ignorar cache e ir a servidor
+                if (categorias.isEmpty()) {
+                    android.util.Log.w("OfflinePlantillaRepository", "⚠️ Cache corrupto (0 categorías), forzando sincronización desde servidor...")
+                    // Continuar al código que consulta el servidor
+                } else {
+                    val categoriasConPreguntas = categorias.map { categoriaEntity ->
+                        val preguntas = plantillaDao.getPreguntasByCategoria(categoriaEntity.id)
+                        android.util.Log.d("OfflinePlantillaRepository", "   └─ Categoría '${categoriaEntity.nombre}': ${preguntas.size} preguntas")
 
-                    CategoriaPlantilla(
-                        id = categoriaEntity.id,
-                        plantillaId = categoriaEntity.plantillaId,
-                        nombre = categoriaEntity.nombre,
-                        orden = categoriaEntity.orden,
-                        createdAt = categoriaEntity.createdAt,
-                        preguntas = preguntas.map { preguntaEntity ->
-                            PreguntaPlantilla(
-                                id = preguntaEntity.id,
-                                categoriaId = preguntaEntity.categoriaId,
-                                texto = preguntaEntity.texto,
-                                tipoRespuesta = preguntaEntity.tipoRespuesta,
-                                orden = preguntaEntity.orden,
-                                createdAt = preguntaEntity.createdAt
-                            )
-                        }
-                    )
+                        CategoriaPlantilla(
+                            id = categoriaEntity.id,
+                            plantillaId = categoriaEntity.plantillaId,
+                            nombre = categoriaEntity.nombre,
+                            orden = categoriaEntity.orden,
+                            createdAt = categoriaEntity.createdAt,
+                            preguntas = preguntas.map { preguntaEntity ->
+                                PreguntaPlantilla(
+                                    id = preguntaEntity.id,
+                                    categoriaId = preguntaEntity.categoriaId,
+                                    texto = preguntaEntity.texto,
+                                    tipoRespuesta = preguntaEntity.tipoRespuesta,
+                                    orden = preguntaEntity.orden,
+                                    createdAt = preguntaEntity.createdAt
+                                )
+                            }
+                        )
+                    }
+
+                    return cachedPlantilla.copy(categorias = categoriasConPreguntas)
                 }
-
-                return cachedPlantilla.copy(categorias = categoriasConPreguntas)
             }
 
             // 2. Si no está en cache y hay conexión, buscar en servidor
