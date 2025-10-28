@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,32 +65,36 @@ fun HomeScreen(
     ) {
         TopAppBar(
             title = {
-                Text(
-                    text = "Checklist",
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Checklist Inspección\nGrúas Horquilla",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+
+                    // Mostrar rol del usuario al lado del título
+                    AssistChip(
+                        onClick = { },
+                        label = {
+                            Text(
+                                text = currentUser.rol,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        modifier = Modifier.offset(x = (-4).dp) // Acercar más al título
+                    )
+                }
             },
             actions = {
                 // Indicador de estado de red (solo ícono)
                 NetworkStatusChip(showLabel = false)
 
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // Mostrar rol del usuario
-                AssistChip(
-                    onClick = { },
-                    label = {
-                        Text(
-                            text = currentUser.rol,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(0.dp))
 
                 // Botón "Acerca de"
                 IconButton(onClick = { showAboutDialog = true }) {
@@ -371,7 +376,11 @@ fun HomeScreen(
                             contentScale = ContentScale.Fit
                         )
 
-                        Divider()
+                        HorizontalDivider(
+                            Modifier,
+                            DividerDefaults.Thickness,
+                            DividerDefaults.color
+                        )
 
                         // Información de la app
                         Column(
@@ -391,7 +400,11 @@ fun HomeScreen(
                             )
                         }
 
-                        Divider()
+                        HorizontalDivider(
+                            Modifier,
+                            DividerDefaults.Thickness,
+                            DividerDefaults.color
+                        )
 
                         // Créditos
                         Column(
@@ -416,7 +429,11 @@ fun HomeScreen(
                             )
                         }
 
-                        Divider()
+                        HorizontalDivider(
+                            Modifier,
+                            DividerDefaults.Thickness,
+                            DividerDefaults.color
+                        )
 
                         // Información adicional
                         Text(
