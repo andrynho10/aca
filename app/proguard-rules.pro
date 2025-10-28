@@ -1,4 +1,8 @@
 # Add project specific ProGuard rules here.
+
+# IMPORTANTE: Desactivar optimizaciones agresivas de R8
+-dontoptimize
+-dontobfuscate
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
 #
@@ -12,18 +16,27 @@
 # Kotlin Serialization - CRÍTICO para Supabase
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
--keepclassmembers class kotlinx.serialization.json.** {
-    *** Companion;
-}
--keepclasseswithmembers class kotlinx.serialization.json.** {
-    kotlinx.serialization.KSerializer serializer(...);
-}
+
+# Mantener todas las clases serializables
 -keep,includedescriptorclasses class com.tulsa.aca.**$$serializer { *; }
+
+# Mantener los companion objects que contienen los serializers
 -keepclassmembers class com.tulsa.aca.** {
     *** Companion;
 }
+
+# Mantener los métodos serializer()
 -keepclasseswithmembers class com.tulsa.aca.** {
     kotlinx.serialization.KSerializer serializer(...);
+}
+
+# Mantener todas las clases anotadas con @Serializable
+-keep @kotlinx.serialization.Serializable class com.tulsa.aca.** { *; }
+
+# Mantener Kotlinx Serialization
+-keep class kotlinx.serialization.** { *; }
+-keepclassmembers class kotlinx.serialization.** {
+    *;
 }
 
 # Ktor Client - necesario para las llamadas HTTP de Supabase
@@ -33,9 +46,15 @@
 -dontwarn kotlinx.atomicfu.**
 -dontwarn org.slf4j.**
 
-# Supabase
+# Supabase - CRÍTICO para comunicación con servidor
 -keep class io.github.jan.supabase.** { *; }
+-keepclassmembers class io.github.jan.supabase.** { *; }
 -dontwarn io.github.jan.supabase.**
+
+# Supabase Postgrest (para queries)
+-keep class io.github.jan.supabase.postgrest.** { *; }
+-keep class io.github.jan.supabase.storage.** { *; }
+-keep class io.github.jan.supabase.gotrue.** { *; }
 
 # Room Database - mantener entidades y DAOs
 -keep class * extends androidx.room.RoomDatabase
@@ -52,9 +71,19 @@
 -keep class * implements com.google.gson.JsonSerializer
 -keep class * implements com.google.gson.JsonDeserializer
 
-# Modelos de datos - mantener todos los campos
--keep class com.tulsa.aca.data.model.** { *; }
+# Modelos de datos - mantener todos los campos (CRÍTICO)
+-keep class com.tulsa.aca.data.models.** { *; }
 -keep class com.tulsa.aca.data.local.entities.** { *; }
+
+# Mantener específicamente los modelos de plantillas
+-keep class com.tulsa.aca.data.models.PlantillaChecklist { *; }
+-keep class com.tulsa.aca.data.models.CategoriaPlantilla { *; }
+-keep class com.tulsa.aca.data.models.PreguntaPlantilla { *; }
+-keep class com.tulsa.aca.data.models.RespuestaReporte { *; }
+-keep class com.tulsa.aca.data.models.ReporteInspeccion { *; }
+-keep class com.tulsa.aca.data.models.FotoRespuesta { *; }
+-keep class com.tulsa.aca.data.models.Activo { *; }
+-keep class com.tulsa.aca.data.models.Usuario { *; }
 
 # Firebase
 -keep class com.google.firebase.** { *; }
@@ -78,3 +107,18 @@
 
 # Preservar nombres de clases para debugging
 -keep class com.tulsa.aca.** { *; }
+
+# IMPORTANTE: Mantener nombres de campos para serialización JSON
+# Esto es crítico para que Supabase pueda mapear los campos correctamente
+-keepclassmembers class com.tulsa.aca.data.models.** {
+    <fields>;
+}
+
+# Mantener anotaciones de Kotlinx Serialization
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+
+# Reflection (usado por Kotlinx Serialization)
+-keepattributes *Annotation*
+-keep class kotlin.Metadata { *; }
+-keep class kotlin.reflect.** { *; }
+-dontwarn kotlin.reflect.**

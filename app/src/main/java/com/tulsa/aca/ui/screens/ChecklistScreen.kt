@@ -895,7 +895,7 @@ private fun QuestionItem(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Requerido: Agrega un comentario o una foto",
+                            text = "Requerido: Agrega un comentario Y al menos una foto",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onErrorContainer

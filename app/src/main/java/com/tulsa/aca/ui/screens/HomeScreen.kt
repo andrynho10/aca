@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -52,6 +53,9 @@ fun HomeScreen(
 
     val isSupervisor = currentUser.rol == "SUPERVISOR"
 
+    // Estado para el diálogo de créditos
+    var showAboutDialog by remember { mutableStateOf(false) }
+
     // LOG PARA DEBUG
     android.util.Log.d("HomeScreen", "Usuario actual: ${currentUser.nombreCompleto}, Rol: ${currentUser.rol}")
 
@@ -60,18 +64,16 @@ fun HomeScreen(
     ) {
         TopAppBar(
             title = {
-                Column {
-                    Text(
-                        text = "Checklist Inspección",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
+                Text(
+                    text = "Checklist",
+                    style = MaterialTheme.typography.titleLarge
+                )
             },
             actions = {
-                // Indicador de estado de red
-                NetworkStatusChip(showLabel = true)
+                // Indicador de estado de red (solo ícono)
+                NetworkStatusChip(showLabel = false)
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
 
                 // Mostrar rol del usuario
                 AssistChip(
@@ -87,7 +89,15 @@ fun HomeScreen(
                     )
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // Botón "Acerca de"
+                IconButton(onClick = { showAboutDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Acerca de"
+                    )
+                }
 
                 // Botón logout
                 IconButton(onClick = onLogout) {
@@ -324,6 +334,104 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+
+        // Diálogo de créditos
+        if (showAboutDialog) {
+            AlertDialog(
+                onDismissRequest = { showAboutDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = "Acerca de",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        text = "Checklist Inspección de Grúas Horquilla",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Logo
+                        Image(
+                            painter = painterResource(id = R.drawable.logo_empresa),
+                            contentDescription = "Logo ACA",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .padding(vertical = 8.dp),
+                            contentScale = ContentScale.Fit
+                        )
+
+                        Divider()
+
+                        // Información de la app
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "Versión 1.0.1",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Sistema de gestión de inspecciones",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        Divider()
+
+                        // Créditos
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Desarrollado por",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Andrés Amaya Garcés",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Desarrollador",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Divider()
+
+                        // Información adicional
+                        Text(
+                            text = "© ${java.time.Year.now().value} Tulsa S.A.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showAboutDialog = false }) {
+                        Text("Cerrar")
+                    }
+                }
+            )
         }
     }
 }
