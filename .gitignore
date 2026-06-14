@@ -16,3 +16,8 @@ local.properties
 .kotlin/errors/errors-1757001941929.log
 app/src/main/res/drawable/logo_empresa.png
 release.keystore
+
+app/release/app-release.apk
+app/release/baselineProfiles/0/app-release.dm
+app/release/baselineProfiles/1/app-release.dm
+app/release/output-metadata.json
