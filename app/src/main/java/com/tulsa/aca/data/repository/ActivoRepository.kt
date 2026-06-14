@@ -11,6 +11,7 @@ class ActivoRepository {
         return try {
             client.from("activos").select().decodeList<Activo>()
         } catch (e: Exception) {
+            android.util.Log.e("ActivoRepository", "Error obteniendo activos: ${e.message}", e)
             emptyList()
         }
     }
@@ -105,6 +106,7 @@ class ActivoRepository {
                 }
             }.decodeList<Activo>()
         } catch (e: Exception) {
+            android.util.Log.e("ActivoRepository", "Error buscando activos por tipo '$tipo': ${e.message}", e)
             emptyList()
         }
     }
@@ -117,6 +119,7 @@ class ActivoRepository {
                 }
             }.decodeList<Activo>()
         } catch (e: Exception) {
+            android.util.Log.e("ActivoRepository", "Error buscando activos por nombre '$nombre': ${e.message}", e)
             emptyList()
         }
     }

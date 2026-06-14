@@ -30,6 +30,7 @@ class PlantillaRepository {
                 }
             }.decodeList<PlantillaChecklist>()
         } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error obteniendo plantillas por tipo '$tipoActivo': ${e.message}", e)
             emptyList()
         }
     }
@@ -78,6 +79,7 @@ class PlantillaRepository {
                 order(column = "created_at", order = Order.DESCENDING)
             }.decodeList<PlantillaChecklist>()
         } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error obteniendo todas las plantillas: ${e.message}", e)
             emptyList()
         }
     }
@@ -235,6 +237,7 @@ class PlantillaRepository {
                 }
             }.decodeList<PlantillaChecklist>()
         } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error buscando plantillas por nombre '$nombre': ${e.message}", e)
             emptyList()
         }
     }
@@ -247,6 +250,7 @@ class PlantillaRepository {
                 }
             }.decodeList<PlantillaChecklist>()
         } catch (e: Exception) {
+            android.util.Log.e("PlantillaRepository", "Error buscando plantillas por tipo '$tipo': ${e.message}", e)
             emptyList()
         }
     }
