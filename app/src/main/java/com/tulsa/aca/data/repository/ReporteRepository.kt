@@ -312,29 +312,6 @@ class ReporteRepository {
         return try {
             val reporteId = UUID.randomUUID().toString()
 
-            android.util.Log.d("ReporteRepository", "CREANDO REPORTE CON TIMESTAMPS:")
-            android.util.Log.d("ReporteRepository", "  ID: $reporteId")
-            android.util.Log.d("ReporteRepository", "  Activo: $activoId")
-            android.util.Log.d("ReporteRepository", "  Usuario: $usuarioId")
-            android.util.Log.d("ReporteRepository", "  Respuestas: ${respuestasConFotos.size}")
-            android.util.Log.d("ReporteRepository", "  timestamp_inicio recibido: $timestampInicio")
-            android.util.Log.d("ReporteRepository", "  timestamp_completado recibido: $timestampFin")
-            runCatching { Instant.parse(timestampInicio) }
-                .onSuccess {
-                    android.util.Log.d("ReporteRepository", "  timestamp_inicio parseado (UTC): $it")
-                }
-                .onFailure {
-                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_inicio: ${it.message}")
-                }
-            runCatching { Instant.parse(timestampFin) }
-                .onSuccess {
-                    android.util.Log.d("ReporteRepository", "  timestamp_completado parseado (UTC): $it")
-                }
-                .onFailure {
-                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_completado: ${it.message}")
-                }
-
-            // 1. CREAR REPORTE
             val reporte = ReporteInspeccion(
                 id = reporteId,
                 activoId = activoId,
@@ -346,20 +323,9 @@ class ReporteRepository {
             )
 
             client.from("reportes_inspeccion").insert(reporte)
-            android.util.Log.d("ReporteRepository", "Reporte principal insertado")
 
-            // 2. INSERTAR RESPUESTAS CON DEBUG
             val respuestasParaInsertar = respuestasConFotos.map {
                 it.respuesta.copy(reporteId = reporteId)
-            }
-
-            android.util.Log.d("ReporteRepository", "INSERTANDO RESPUESTAS:")
-            respuestasParaInsertar.forEach { respuesta ->
-                val estado = if (respuesta.respuesta) "BUENO" else "MALO"
-                android.util.Log.d("ReporteRepository", "  - Pregunta ${respuesta.preguntaId}: $estado")
-                if (!respuesta.respuesta) {
-                    android.util.Log.d("ReporteRepository", "    Comentario: ${respuesta.comentario}")
-                }
             }
 
             val respuestasInsertadas = client.from("respuestas_reporte")
@@ -367,10 +333,6 @@ class ReporteRepository {
                     select()
                 }.decodeList<RespuestaReporte>()
 
-            android.util.Log.d("ReporteRepository", "${respuestasInsertadas.size} respuestas insertadas exitosamente")
-
-            // 3. SUBIR FOTOS (lógica existente)
-            var fotosSubidas = 0
             respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
                 val respuestaInsertada = respuestasInsertadas[index]
                 val fotos = respuestaConFotos.fotos
@@ -392,20 +354,13 @@ class ReporteRepository {
 
                     if (fotosRespuesta.isNotEmpty()) {
                         client.from("fotos_respuesta").insert(fotosRespuesta)
-                        fotosSubidas += fotosRespuesta.size
                     }
                 }
             }
 
-            android.util.Log.d("ReporteRepository", "REPORTE COMPLETADO:")
-            android.util.Log.d("ReporteRepository", "ID: $reporteId")
-            android.util.Log.d("ReporteRepository", "Duración: $duracionMinutos min")
-            android.util.Log.d("ReporteRepository", "Respuestas: ${respuestasInsertadas.size}")
-            android.util.Log.d("ReporteRepository", "Fotos: $fotosSubidas")
-
             true
         } catch (e: Exception) {
-            android.util.Log.e("ReporteRepository", "ERROR AL CREAR REPORTE CON TIMESTAMPS: ${e.message}", e)
+            android.util.Log.e("ReporteRepository", "Error al crear reporte con timestamps: ${e.message}", e)
             false
         }
     }
@@ -429,31 +384,6 @@ class ReporteRepository {
         return try {
             val reporteId = UUID.randomUUID().toString()
 
-            android.util.Log.d("ReporteRepository", "⭐ CREANDO REPORTE CON HORÓMETRO:")
-            android.util.Log.d("ReporteRepository", "  ID: $reporteId")
-            android.util.Log.d("ReporteRepository", "  Activo: $activoId")
-            android.util.Log.d("ReporteRepository", "  Usuario: $usuarioId")
-            android.util.Log.d("ReporteRepository", "  Respuestas: ${respuestasConFotos.size}")
-            android.util.Log.d("ReporteRepository", "  Horómetro inicial: $horometroInicial")
-            android.util.Log.d("ReporteRepository", "  Turno: $turno")
-            android.util.Log.d("ReporteRepository", "  timestamp_inicio recibido: $timestampInicio")
-            android.util.Log.d("ReporteRepository", "  timestamp_completado recibido: $timestampFin")
-            runCatching { Instant.parse(timestampInicio) }
-                .onSuccess {
-                    android.util.Log.d("ReporteRepository", "  timestamp_inicio parseado (UTC): $it")
-                }
-                .onFailure {
-                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_inicio: ${it.message}")
-                }
-            runCatching { Instant.parse(timestampFin) }
-                .onSuccess {
-                    android.util.Log.d("ReporteRepository", "  timestamp_completado parseado (UTC): $it")
-                }
-                .onFailure {
-                    android.util.Log.w("ReporteRepository", "  No se pudo parsear timestamp_completado: ${it.message}")
-                }
-
-            // 1. CREAR REPORTE CON HORÓMETRO
             val reporte = ReporteInspeccion(
                 id = reporteId,
                 activoId = activoId,
@@ -464,24 +394,13 @@ class ReporteRepository {
                 duracionMinutos = duracionMinutos,
                 horometroInicial = horometroInicial,
                 turno = null,
-                horometroPendiente = horometroInicial != null // Si hay horómetro inicial, queda pendiente
+                horometroPendiente = horometroInicial != null
             )
 
             client.from("reportes_inspeccion").insert(reporte)
-            android.util.Log.d("ReporteRepository", "✅ Reporte principal insertado (pendiente=${reporte.horometroPendiente})")
 
-            // 2. INSERTAR RESPUESTAS CON DEBUG
             val respuestasParaInsertar = respuestasConFotos.map {
                 it.respuesta.copy(reporteId = reporteId)
-            }
-
-            android.util.Log.d("ReporteRepository", "📋 INSERTANDO RESPUESTAS:")
-            respuestasParaInsertar.forEach { respuesta ->
-                val estado = if (respuesta.respuesta) "BUENO" else "MALO"
-                android.util.Log.d("ReporteRepository", "  - Pregunta ${respuesta.preguntaId}: $estado")
-                if (!respuesta.respuesta) {
-                    android.util.Log.d("ReporteRepository", "    Comentario: ${respuesta.comentario}")
-                }
             }
 
             val respuestasInsertadas = client.from("respuestas_reporte")
@@ -489,10 +408,6 @@ class ReporteRepository {
                     select()
                 }.decodeList<RespuestaReporte>()
 
-            android.util.Log.d("ReporteRepository", "✅ ${respuestasInsertadas.size} respuestas insertadas")
-
-            // 3. SUBIR FOTOS
-            var fotosSubidas = 0
             respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
                 val respuestaInsertada = respuestasInsertadas[index]
                 val fotos = respuestaConFotos.fotos
@@ -514,23 +429,13 @@ class ReporteRepository {
 
                     if (fotosRespuesta.isNotEmpty()) {
                         client.from("fotos_respuesta").insert(fotosRespuesta)
-                        fotosSubidas += fotosRespuesta.size
                     }
                 }
             }
 
-            android.util.Log.d("ReporteRepository", """
-                ✅ REPORTE COMPLETADO:
-                - ID: $reporteId
-                - Duración: $duracionMinutos min
-                - Respuestas: ${respuestasInsertadas.size}
-                - Fotos: $fotosSubidas
-                - Horómetro pendiente: ${reporte.horometroPendiente}
-            """.trimIndent())
-
             true
         } catch (e: Exception) {
-            android.util.Log.e("ReporteRepository", "❌ ERROR AL CREAR REPORTE CON HORÓMETRO: ${e.message}", e)
+            android.util.Log.e("ReporteRepository", "Error al crear reporte con horómetro: ${e.message}", e)
             false
         }
     }
