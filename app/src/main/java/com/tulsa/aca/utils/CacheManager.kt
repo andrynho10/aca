@@ -107,6 +107,7 @@ object CacheManager {
     /**
      * Compatibilidad con sistema legacy
      */
+    // Usa reflexión para no crear dependencias de compilación directas con ViewModels de módulos opcionales
     @Suppress("TRY_CATCH_ON_SEALED_CLASSES")
     private fun limpiarCachesLegacy() {
         try {

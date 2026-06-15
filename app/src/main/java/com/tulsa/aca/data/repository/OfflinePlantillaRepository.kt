@@ -60,20 +60,20 @@ class OfflinePlantillaRepository(private val context: Context) {
      */
     suspend fun obtenerPlantillaCompleta(plantillaId: Int): PlantillaChecklist? {
         return try {
-            android.util.Log.d("OfflinePlantillaRepository", "🔍 Buscando plantilla completa ID: $plantillaId")
+            android.util.Log.d("OfflinePlantillaRepository", "Buscando plantilla completa ID: $plantillaId")
 
             // 1. Intentar del cache local
             val cachedPlantilla = plantillaDao.getPlantillaById(plantillaId)?.toPlantilla()
 
             if (cachedPlantilla != null) {
-                android.util.Log.d("OfflinePlantillaRepository", "✅ Plantilla encontrada en cache")
+                android.util.Log.d("OfflinePlantillaRepository", "Plantilla encontrada en cache")
                 // Cargar categorías y preguntas desde cache
                 val categorias = plantillaDao.getCategoriasByPlantilla(plantillaId)
-                android.util.Log.d("OfflinePlantillaRepository", "📋 Categorías en cache: ${categorias.size}")
+                android.util.Log.d("OfflinePlantillaRepository", "Categorías en cache: ${categorias.size}")
 
                 // IMPORTANTE: Si el cache tiene 0 categorías, ignorar cache e ir a servidor
                 if (categorias.isEmpty()) {
-                    android.util.Log.w("OfflinePlantillaRepository", "⚠️ Cache corrupto (0 categorías), forzando sincronización desde servidor...")
+                    android.util.Log.w("OfflinePlantillaRepository", "Cache corrupto (0 categorías), forzando sincronización desde servidor...")
                     // Continuar al código que consulta el servidor
                 } else {
                     val categoriasConPreguntas = categorias.map { categoriaEntity ->
@@ -104,29 +104,29 @@ class OfflinePlantillaRepository(private val context: Context) {
             }
 
             // 2. Si no está en cache y hay conexión, buscar en servidor
-            android.util.Log.d("OfflinePlantillaRepository", "📴 No encontrada en cache, verificando conexión...")
+            android.util.Log.d("OfflinePlantillaRepository", "No encontrada en cache, verificando conexión...")
             val isConnected = networkMonitor.isCurrentlyConnected()
-            android.util.Log.d("OfflinePlantillaRepository", "🌐 Conectado: $isConnected")
+            android.util.Log.d("OfflinePlantillaRepository", "Conectado: $isConnected")
 
             if (isConnected) {
-                android.util.Log.d("OfflinePlantillaRepository", "📡 Consultando servidor...")
+                android.util.Log.d("OfflinePlantillaRepository", "Consultando servidor...")
                 val remote = remoteRepository.obtenerPlantillaCompleta(plantillaId)
 
                 if (remote != null) {
-                    android.util.Log.d("OfflinePlantillaRepository", "✅ Plantilla obtenida del servidor: ${remote.categorias.size} categorías")
+                    android.util.Log.d("OfflinePlantillaRepository", "Plantilla obtenida del servidor: ${remote.categorias.size} categorías")
                     // Guardar en cache para próxima vez
                     guardarPlantillaCompletaEnCache(remote)
                     return remote
                 } else {
-                    android.util.Log.w("OfflinePlantillaRepository", "⚠️ Servidor retornó null")
+                    android.util.Log.w("OfflinePlantillaRepository", "Servidor retornó null")
                 }
             } else {
-                android.util.Log.w("OfflinePlantillaRepository", "❌ Sin conexión y sin cache")
+                android.util.Log.w("OfflinePlantillaRepository", "Sin conexión y sin cache")
             }
 
             null
         } catch (e: Exception) {
-            android.util.Log.e("OfflinePlantillaRepository", "❌ Error obteniendo plantilla completa: ${e.message}", e)
+            android.util.Log.e("OfflinePlantillaRepository", "Error obteniendo plantilla completa: ${e.message}", e)
             null
         }
     }
@@ -382,7 +382,7 @@ class OfflinePlantillaRepository(private val context: Context) {
                 }
             }
 
-            android.util.Log.d("OfflinePlantillaRepository", "✅ Plantilla ${plantilla.id} guardada en cache")
+            android.util.Log.d("OfflinePlantillaRepository", "Plantilla ${plantilla.id} guardada en cache")
         } catch (e: Exception) {
             android.util.Log.e("OfflinePlantillaRepository", "Error guardando plantilla en cache: ${e.message}", e)
         }
@@ -407,11 +407,11 @@ class OfflinePlantillaRepository(private val context: Context) {
                 }
             }
 
-            android.util.Log.d("OfflinePlantillaRepository", "✅ Sincronización exitosa: ${remotePlantillas.size} plantillas")
+            android.util.Log.d("OfflinePlantillaRepository", "Sincronización exitosa: ${remotePlantillas.size} plantillas")
             true
 
         } catch (e: Exception) {
-            android.util.Log.e("OfflinePlantillaRepository", "❌ Error en sincronización: ${e.message}", e)
+            android.util.Log.e("OfflinePlantillaRepository", "Error en sincronización: ${e.message}", e)
             false
         }
     }

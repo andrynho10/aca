@@ -25,6 +25,7 @@ class DraftChecklistRepository(context: Context) {
 
     companion object {
         private const val TAG = "DraftChecklistRepo"
+        // Drafts más antiguos que 24 h se descartan automáticamente para no ofrecer datos obsoletos
         private const val MAX_DRAFT_AGE_MS = 24 * 60 * 60 * 1000L // 24 horas
     }
 
@@ -42,7 +43,7 @@ class DraftChecklistRepository(context: Context) {
         turno: Int? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "💾 Guardando draft: $draftId")
+            Log.d(TAG, "Guardando draft: $draftId")
 
             // Convertir respuestas a JSON
             val respuestasSerializadas = respuestas.mapValues { (_, item) ->
@@ -70,11 +71,11 @@ class DraftChecklistRepository(context: Context) {
 
             dao.saveDraft(draft)
 
-            Log.d(TAG, "✅ Draft guardado exitosamente")
+            Log.d(TAG, "Draft guardado exitosamente")
             Result.success(draftId)
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error guardando draft: ${e.message}", e)
+            Log.e(TAG, "Error guardando draft: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -88,24 +89,24 @@ class DraftChecklistRepository(context: Context) {
         plantillaId: Int
     ): DraftChecklistData? = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "🔍 Buscando draft para usuario=$usuarioId, activo=$activoId, plantilla=$plantillaId")
+            Log.d(TAG, "Buscando draft para usuario=$usuarioId, activo=$activoId, plantilla=$plantillaId")
 
             val draft = dao.getLatestDraft(usuarioId, activoId, plantillaId)
 
             if (draft == null) {
-                Log.d(TAG, "❌ No se encontró draft")
+                Log.d(TAG, "No se encontró draft")
                 return@withContext null
             }
 
             // Verificar que no sea muy antiguo
             val edad = System.currentTimeMillis() - draft.ultimoGuardado
             if (edad > MAX_DRAFT_AGE_MS) {
-                Log.d(TAG, "⏰ Draft muy antiguo (${edad / 1000 / 60} minutos), eliminando...")
+                Log.d(TAG, "Draft muy antiguo (${edad / 1000 / 60} minutos), eliminando...")
                 dao.deleteDraft(draft)
                 return@withContext null
             }
 
-            Log.d(TAG, "✅ Draft encontrado: ${draft.id}")
+            Log.d(TAG, "Draft encontrado: ${draft.id}")
 
             // Deserializar respuestas
             val respuestasMap = deserializarRespuestas(draft.respuestasJson)
@@ -123,7 +124,7 @@ class DraftChecklistRepository(context: Context) {
             )
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error obteniendo draft: ${e.message}", e)
+            Log.e(TAG, "Error obteniendo draft: ${e.message}", e)
             null
         }
     }
@@ -133,12 +134,12 @@ class DraftChecklistRepository(context: Context) {
      */
     suspend fun eliminarDraft(draftId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "🗑️ Eliminando draft: $draftId")
+            Log.d(TAG, "Eliminando draft: $draftId")
             dao.deleteDraftById(draftId)
-            Log.d(TAG, "✅ Draft eliminado")
+            Log.d(TAG, "Draft eliminado")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error eliminando draft: ${e.message}", e)
+            Log.e(TAG, "Error eliminando draft: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -152,12 +153,12 @@ class DraftChecklistRepository(context: Context) {
         plantillaId: Int
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "🗑️ Eliminando drafts para usuario=$usuarioId, activo=$activoId, plantilla=$plantillaId")
+            Log.d(TAG, "Eliminando drafts para usuario=$usuarioId, activo=$activoId, plantilla=$plantillaId")
             dao.deleteDraftsByTemplate(usuarioId, activoId, plantillaId)
-            Log.d(TAG, "✅ Drafts eliminados")
+            Log.d(TAG, "Drafts eliminados")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error eliminando drafts: ${e.message}", e)
+            Log.e(TAG, "Error eliminando drafts: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -169,24 +170,25 @@ class DraftChecklistRepository(context: Context) {
         try {
             val timestampLimite = System.currentTimeMillis() - MAX_DRAFT_AGE_MS
 
-            Log.d(TAG, "🧹 Limpiando drafts antiguos (antes de ${Date(timestampLimite)})")
+            Log.d(TAG, "Limpiando drafts antiguos (antes de ${Date(timestampLimite)})")
 
             val draftsAntiguos = dao.getAllDrafts().filter { it.ultimoGuardado < timestampLimite }
             val count = draftsAntiguos.size
 
             dao.deleteOldDrafts(timestampLimite)
 
-            Log.d(TAG, "✅ $count drafts antiguos eliminados")
+            Log.d(TAG, "$count drafts antiguos eliminados")
             Result.success(count)
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error limpiando drafts antiguos: ${e.message}", e)
+            Log.e(TAG, "Error limpiando drafts antiguos: ${e.message}", e)
             Result.failure(e)
         }
     }
 
     /**
-     * Deserializa el JSON de respuestas a un Map de RespuestaChecklistItem
+     * Deserializa el JSON de respuestas a un Map de RespuestaChecklistItem;
+     * las claves son Strings en JSON pero se convierten a Int para coincidir con el mapa del ViewModel
      */
     private fun deserializarRespuestas(json: String): Map<Int, RespuestaChecklistItem> {
         try {
@@ -208,7 +210,7 @@ class DraftChecklistRepository(context: Context) {
                 )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error deserializando respuestas: ${e.message}", e)
+            Log.e(TAG, "Error deserializando respuestas: ${e.message}", e)
             return emptyMap()
         }
     }

@@ -35,7 +35,7 @@ fun ChecklistSelectionScreen(
     val plantillas by plantillaViewModel.plantillas.collectAsState()
     val isLoading by plantillaViewModel.isLoading.collectAsState()
 
-    // 🆕 NUEVO: Estado para dialog de confirmación
+    // NUEVO: Estado para dialog de confirmación
     var showConfirmDialog by remember { mutableStateOf(false) }
     var selectedTemplateId by remember { mutableStateOf<Int?>(null) }
 
@@ -56,7 +56,7 @@ fun ChecklistSelectionScreen(
         }
     }
 
-    // 🆕 NUEVO: Dialog de confirmación inicio
+    // NUEVO: Dialog de confirmación inicio
     if (showConfirmDialog) {
         ConfirmacionInicioInspeccionDialog(
             nombreActivo = activo?.nombre ?: "Activo",
@@ -117,7 +117,7 @@ fun ChecklistSelectionScreen(
                 ChecklistCard(
                     plantilla = plantilla,
                     onClick = {
-                        // 🆕 EN LUGAR DE NAVEGAR DIRECTO, MOSTRAR DIALOG
+                        // EN LUGAR DE NAVEGAR DIRECTO, MOSTRAR DIALOG
                         selectedTemplateId = plantilla.id
                         showConfirmDialog = true
                     }

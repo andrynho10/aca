@@ -27,13 +27,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+/** Representa el estado de una respuesta individual del checklist, incluyendo fotos adjuntas */
 data class RespuestaChecklistItem(
     val preguntaId: Int,
-    val respuesta: Boolean? = null,
+    val respuesta: Boolean? = null,  // null = sin responder; true = Bueno; false = Malo
     val comentario: String = "",
     val fotos: List<Uri> = emptyList()
 )
 
+/**
+ * ViewModel del flujo de inspección; orquesta plantilla, respuestas, auto-guardado de draft y envío de reporte
+ */
 class ChecklistViewModel(application: Application) : AndroidViewModel(application) {
     private val plantillaRepository = OfflinePlantillaRepository(application)
     private val reporteRepository = OfflineReporteRepository(application)
@@ -77,15 +81,15 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    // Estado de conectividad
+    // Estado de conectividad expuesto a la UI para mostrar el badge offline
     val isConnected = reporteRepository.observarConectividad()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    // Número de reportes pendientes de sincronización
+    // Número de reportes pendientes de sincronización expuesto a la UI
     val reportesPendientes = reporteRepository.observarReportesPendientes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    // Auto-guardado
+    // Job del ciclo de auto-guardado; se cancela al completar o destruir el ViewModel
     private var autoSaveJob: Job? = null
     private var draftId: String? = null
     private var currentAssetId: Int? = null
@@ -109,6 +113,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         _searchQuery.value = query
     }
 
+    /** Devuelve preguntas agrupadas por categoría; aplica filtro de texto si el usuario está buscando */
     fun obtenerPreguntasFiltradas(): List<Pair<com.tulsa.aca.data.models.CategoriaPlantilla, List<com.tulsa.aca.data.models.PreguntaPlantilla>>> {
         val plantilla = _plantillaCompleta.value ?: return emptyList()
         val query = _searchQuery.value.trim()
@@ -120,7 +125,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
             }
         }
 
-        // Con búsqueda: filtrar preguntas que coincidan
+        // Con búsqueda: omite categorías donde ninguna pregunta coincide con el texto
         return plantilla.categorias.mapNotNull { categoria ->
             val preguntasFiltradas = categoria.preguntas.filter { pregunta ->
                 pregunta.texto.contains(query, ignoreCase = true)
@@ -361,6 +366,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
 
 
 
+    /** Pre-carga todas las preguntas con respuesta "Bueno" (true) para que el operador solo marque las malas */
     private fun initializeResponses(plantilla: PlantillaChecklist) {
         val respuestasIniciales = mutableMapOf<Int, RespuestaChecklistItem>()
 
@@ -428,7 +434,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
                 "Las preguntas con respuesta MALO deben tener comentario y al menos una foto. " +
                 "Revisa las preguntas que marcaste como MALO."
             }
-            android.util.Log.w("ChecklistViewModel", "❌ Validación fallida: Preguntas sin validar: $preguntasIds")
+            android.util.Log.w("ChecklistViewModel", "Validación fallida: Preguntas sin validar: $preguntasIds")
             return false to mensaje
         }
 
@@ -451,7 +457,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
 
         if (!todasLasPreguntasRespondidas()) {
             val sinResponder = _respuestas.value.values.count { it.respuesta == null }
-            android.util.Log.w("ChecklistViewModel", "⚠️ Hay $sinResponder preguntas sin responder")
+            android.util.Log.w("ChecklistViewModel", "Hay $sinResponder preguntas sin responder")
             onError("Por favor completa todas las preguntas antes de enviar.")
             return
         }
@@ -459,7 +465,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
         // Validar que las respuestas "Malo" tengan comentario O foto
         val (validacionOk, errorValidacion) = validarRespuestasMalas()
         if (!validacionOk) {
-            android.util.Log.w("ChecklistViewModel", "⚠️ Validación de respuestas malas fallida: $errorValidacion")
+            android.util.Log.w("ChecklistViewModel", "Validación de respuestas malas fallida: $errorValidacion")
             onError(errorValidacion ?: "Error de validación")
             return
         }
@@ -472,6 +478,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
                 val timestampFinUTC = Instant.now()
                 val timestampInicioUTC = _timestampInicio.value ?: timestampFinUTC
 
+                // Guarda contra relojes del sistema desincronizados: garantiza inicio <= fin
                 val (inicioUtcNormalizado, finUtcNormalizado) =
                     if (timestampInicioUTC <= timestampFinUTC) {
                         timestampInicioUTC to timestampFinUTC
@@ -505,6 +512,7 @@ class ChecklistViewModel(application: Application) : AndroidViewModel(applicatio
                     android.util.Log.w("ChecklistViewModel", "$nulas respuestas con valor null al guardar checklist")
                 }
 
+                // Detecta corrupción de estado: el número de respuestas debe coincidir exactamente con las preguntas de la plantilla
                 val plantilla = _plantillaCompleta.value
                 if (plantilla != null) {
                     val esperadas = plantilla.categorias.sumOf { it.preguntas.size }

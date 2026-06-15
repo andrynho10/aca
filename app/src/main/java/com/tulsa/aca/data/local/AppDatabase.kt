@@ -49,7 +49,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "aca_offline_database"
                 )
-                    .fallbackToDestructiveMigration() // Para desarrollo. En producción, usar migraciones
+                    // En desarrollo: borra y recrea la BD si cambia el esquema; en producción reemplazar por migraciones explícitas
+                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

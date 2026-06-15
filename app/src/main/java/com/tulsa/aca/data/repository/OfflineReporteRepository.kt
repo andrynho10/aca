@@ -48,9 +48,9 @@ class OfflineReporteRepository(private val context: Context) {
             android.util.Log.d("OfflineReporteRepository", "Crear reporte $reporteId | conectado=$isConnected")
 
             if (respuestasConFotos.isEmpty()) {
-                android.util.Log.e("OfflineReporteRepository", "❌ ERROR CRÍTICO: No se recibieron respuestas")
-                android.util.Log.e("OfflineReporteRepository", "❌ Esto indica un problema en el ViewModel")
-                android.util.Log.e("OfflineReporteRepository", "❌ ActivoID: $activoId, UserID: $usuarioId, TemplateID: $plantillaId")
+                android.util.Log.e("OfflineReporteRepository", "ERROR CRÍTICO: No se recibieron respuestas")
+                android.util.Log.e("OfflineReporteRepository", "Esto indica un problema en el ViewModel")
+                android.util.Log.e("OfflineReporteRepository", "ActivoID: $activoId, UserID: $usuarioId, TemplateID: $plantillaId")
                 return Result.failure(IllegalStateException("No se recibieron respuestas del checklist"))
             }
 
@@ -59,6 +59,7 @@ class OfflineReporteRepository(private val context: Context) {
                 android.util.Log.w("OfflineReporteRepository", "$respuestasNulas respuestas con valor null en reporte $reporteId")
             }
 
+            // Con conexión: intenta enviar directamente al servidor; si falla, cae a cola offline
             if (isConnected) {
                 val success = remoteRepository.crearReporteConTimestampsYHorometro(
                     context = context,
@@ -91,6 +92,7 @@ class OfflineReporteRepository(private val context: Context) {
                 return Result.failure(IllegalStateException("JSON generado es inválido: '$respuestasJson'"))
             }
 
+            // Verifica que el JSON sea deserializable antes de persistir para evitar guardar datos corruptos
             try {
                 val testDeserializacion = gson.fromJson(respuestasJson, Array<com.tulsa.aca.data.models.RespuestaReporte>::class.java)
                 if (testDeserializacion == null || testDeserializacion.isEmpty()) {
@@ -121,6 +123,7 @@ class OfflineReporteRepository(private val context: Context) {
 
             reportePendienteDao.insertReportePendiente(reportePendiente)
 
+            // Guarda cada URI de foto local en cola; el SyncManager las subirá cuando haya conexión
             var totalFotosGuardadas = 0
             respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
                 respuestaConFotos.fotos.forEach { uri ->
@@ -143,7 +146,7 @@ class OfflineReporteRepository(private val context: Context) {
             Result.success(reporteId)
 
         } catch (e: Exception) {
-            android.util.Log.e("OfflineReporteRepository", "❌ Error creando reporte: ${e.message}", e)
+            android.util.Log.e("OfflineReporteRepository", "Error creando reporte: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -259,7 +262,7 @@ class OfflineReporteRepository(private val context: Context) {
     suspend fun forzarSincronizacion(): Result<Int> {
         return try {
             if (!networkMonitor.isCurrentlyConnected()) {
-                android.util.Log.w("OfflineReporteRepository", "❌ Sin conexión. No se puede sincronizar")
+                android.util.Log.w("OfflineReporteRepository", "Sin conexión. No se puede sincronizar")
                 return Result.failure(Exception("Sin conexión a Internet"))
             }
 
@@ -318,7 +321,7 @@ class OfflineReporteRepository(private val context: Context) {
                     }
 
                 } catch (e: Exception) {
-                    android.util.Log.e("OfflineReporteRepository", "❌ Error sincronizando ${reportePendiente.id}: ${e.message}", e)
+                    android.util.Log.e("OfflineReporteRepository", "Error sincronizando ${reportePendiente.id}: ${e.message}", e)
                 }
             }
 
@@ -327,7 +330,7 @@ class OfflineReporteRepository(private val context: Context) {
             Result.success(sincronizados)
 
         } catch (e: Exception) {
-            android.util.Log.e("OfflineReporteRepository", "❌ Error en sincronización: ${e.message}", e)
+            android.util.Log.e("OfflineReporteRepository", "Error en sincronización: ${e.message}", e)
             Result.failure(e)
         }
     }

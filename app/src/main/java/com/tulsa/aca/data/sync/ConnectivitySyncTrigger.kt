@@ -24,21 +24,21 @@ class ConnectivitySyncTrigger(private val context: Context) {
      * Debe llamarse desde Application.onCreate()
      */
     fun iniciar() {
-        android.util.Log.d("ConnectivitySyncTrigger", "🔄 Iniciando observación de conectividad...")
+        android.util.Log.d("ConnectivitySyncTrigger", "Iniciando observación de conectividad...")
 
         ProcessLifecycleOwner.get().lifecycleScope.launch {
             networkMonitor.isConnected
-                .distinctUntilChanged() // Solo cambios de estado
-                .drop(1) // Ignorar el primer valor (estado inicial)
+                .distinctUntilChanged() // Solo reacciona a transiciones de estado, no a repeticiones
+                .drop(1) // Ignora el estado inicial para no sincronizar en cada arranque de la app
                 .collect { isConnected ->
-                    android.util.Log.d("ConnectivitySyncTrigger", "📡 Cambio de conectividad: $isConnected")
+                    android.util.Log.d("ConnectivitySyncTrigger", "Cambio de conectividad: $isConnected")
 
                     if (isConnected) {
                         // Se recuperó la conexión
-                        android.util.Log.d("ConnectivitySyncTrigger", "✅ Conexión recuperada, iniciando sincronización...")
+                        android.util.Log.d("ConnectivitySyncTrigger", "Conexión recuperada, iniciando sincronización...")
                         sincronizarTodo()
                     } else {
-                        android.util.Log.d("ConnectivitySyncTrigger", "❌ Conexión perdida")
+                        android.util.Log.d("ConnectivitySyncTrigger", "Conexión perdida")
                     }
                 }
         }
@@ -54,8 +54,8 @@ class ConnectivitySyncTrigger(private val context: Context) {
 
             if (pendientesCount > 0) {
                 android.util.Log.d("ConnectivitySyncTrigger", "═══════════════════════════════════════")
-                android.util.Log.d("ConnectivitySyncTrigger", "🔄 SINCRONIZACIÓN AUTOMÁTICA")
-                android.util.Log.d("ConnectivitySyncTrigger", "📊 Reportes pendientes: $pendientesCount")
+                android.util.Log.d("ConnectivitySyncTrigger", "SINCRONIZACIÓN AUTOMÁTICA")
+                android.util.Log.d("ConnectivitySyncTrigger", "Reportes pendientes: $pendientesCount")
                 android.util.Log.d("ConnectivitySyncTrigger", "═══════════════════════════════════════")
 
                 // 2. Sincronizar reportes pendientes
@@ -63,25 +63,25 @@ class ConnectivitySyncTrigger(private val context: Context) {
 
                 if (resultado.isSuccess) {
                     val sincronizados = resultado.getOrNull() ?: 0
-                    android.util.Log.d("ConnectivitySyncTrigger", "✅ Reportes sincronizados: $sincronizados")
+                    android.util.Log.d("ConnectivitySyncTrigger", "Reportes sincronizados: $sincronizados")
                 } else {
-                    android.util.Log.w("ConnectivitySyncTrigger", "⚠️ Error sincronizando reportes: ${resultado.exceptionOrNull()?.message}")
+                    android.util.Log.w("ConnectivitySyncTrigger", "Error sincronizando reportes: ${resultado.exceptionOrNull()?.message}")
                 }
             } else {
-                android.util.Log.d("ConnectivitySyncTrigger", "✅ No hay reportes pendientes")
+                android.util.Log.d("ConnectivitySyncTrigger", "No hay reportes pendientes")
             }
 
             // 3. Sincronizar cache (activos y plantillas)
-            android.util.Log.d("ConnectivitySyncTrigger", "🔄 Actualizando cache de activos y plantillas...")
+            android.util.Log.d("ConnectivitySyncTrigger", "Actualizando cache de activos y plantillas...")
             syncManager.syncActivos(forceSync = false)
             syncManager.syncPlantillas(forceSync = false)
 
             android.util.Log.d("ConnectivitySyncTrigger", "═══════════════════════════════════════")
-            android.util.Log.d("ConnectivitySyncTrigger", "✅ SINCRONIZACIÓN AUTOMÁTICA COMPLETADA")
+            android.util.Log.d("ConnectivitySyncTrigger", "SINCRONIZACIÓN AUTOMÁTICA COMPLETADA")
             android.util.Log.d("ConnectivitySyncTrigger", "═══════════════════════════════════════")
 
         } catch (e: Exception) {
-            android.util.Log.e("ConnectivitySyncTrigger", "❌ Error en sincronización automática: ${e.message}", e)
+            android.util.Log.e("ConnectivitySyncTrigger", "Error en sincronización automática: ${e.message}", e)
         }
     }
 }

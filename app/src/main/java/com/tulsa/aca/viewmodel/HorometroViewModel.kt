@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** Datos necesarios para mostrar el formulario de cierre de horómetro */
 data class InfoReporteCierre(
     val reporteId: String,
     val grua: String,
@@ -17,6 +18,7 @@ data class InfoReporteCierre(
     val turno: Int?
 )
 
+/** Estado único de UI para la pantalla de horómetros; sigue el patrón UDF de Compose */
 data class HorometroUiState(
     val pendientes: List<HorometroPendiente> = emptyList(),
     val reporteActual: InfoReporteCierre? = null,
@@ -29,6 +31,9 @@ data class HorometroUiState(
     val mensajeExito: String? = null
 )
 
+/**
+ * ViewModel para el flujo de horómetros: valida el valor inicial, lista los pendientes y registra el cierre
+ */
 class HorometroViewModel : ViewModel() {
 
     private val repository = HorometroRepository()
@@ -57,7 +62,7 @@ class HorometroViewModel : ViewModel() {
                 val resultado = repository.validarHorometroInicial(activoId, horometroInicial)
 
                 if (resultado.valido) {
-                    android.util.Log.d("HorometroVM", "✅ Horómetro inicial válido")
+                    android.util.Log.d("HorometroVM", "Horómetro inicial válido")
                     _uiState.value = _uiState.value.copy(
                         isValidating = false,
                         ultimoHorometro = resultado.ultimoHorometro,
@@ -66,7 +71,7 @@ class HorometroViewModel : ViewModel() {
                     onValido()
                 } else {
                     val error = resultado.error ?: "Horómetro inválido"
-                    android.util.Log.e("HorometroVM", "❌ $error")
+                    android.util.Log.e("HorometroVM", "$error")
                     _uiState.value = _uiState.value.copy(
                         isValidating = false,
                         ultimoHorometro = resultado.ultimoHorometro,
@@ -77,7 +82,7 @@ class HorometroViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 val errorMsg = "Error validando horómetro: ${e.message}"
-                android.util.Log.e("HorometroVM", "❌ $errorMsg", e)
+                android.util.Log.e("HorometroVM", "$errorMsg", e)
                 _uiState.value = _uiState.value.copy(
                     isValidating = false,
                     errorValidacion = errorMsg
@@ -105,7 +110,7 @@ class HorometroViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val pendientes = repository.obtenerHorometrosPendientes(usuarioActual.id)
-                android.util.Log.d("HorometroVM", "✅ Pendientes cargados: ${pendientes.size}")
+                android.util.Log.d("HorometroVM", "Pendientes cargados: ${pendientes.size}")
 
                 _uiState.value = _uiState.value.copy(
                     pendientes = pendientes,
@@ -113,7 +118,7 @@ class HorometroViewModel : ViewModel() {
                 )
 
             } catch (e: Exception) {
-                android.util.Log.e("HorometroVM", "❌ Error cargando pendientes: ${e.message}", e)
+                android.util.Log.e("HorometroVM", "Error cargando pendientes: ${e.message}", e)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     error = "Error al cargar pendientes: ${e.message}"
@@ -133,7 +138,7 @@ class HorometroViewModel : ViewModel() {
                 val info = repository.obtenerInfoReporteParaCierre(reporteId)
 
                 if (info != null) {
-                    android.util.Log.d("HorometroVM", "✅ Info cargada: ${info.grua}")
+                    android.util.Log.d("HorometroVM", "Info cargada: ${info.grua}")
                     _uiState.value = _uiState.value.copy(
                         reporteActual = info,
                         isLoading = false
@@ -182,7 +187,7 @@ class HorometroViewModel : ViewModel() {
                 )
 
                 if (resultado.success) {
-                    android.util.Log.d("HorometroVM", "✅ Horómetro cerrado exitosamente")
+                    android.util.Log.d("HorometroVM", "Horómetro cerrado exitosamente")
                     android.util.Log.d("HorometroVM", "   Horas de uso: ${resultado.horasUso}")
                     android.util.Log.d("HorometroVM", "   Tiempo transcurrido: ${resultado.tiempoTranscurrido}")
 
@@ -191,11 +196,12 @@ class HorometroViewModel : ViewModel() {
                         mensajeExito = resultado.mensaje
                     )
 
+                    // Refresca la lista de pendientes para reflejar el cierre recién completado
                     cargarPendientes()
                     onSuccess()
                 } else {
                     val errorMsg = resultado.error ?: "Error desconocido"
-                    android.util.Log.e("HorometroVM", "❌ Error: $errorMsg")
+                    android.util.Log.e("HorometroVM", "Error: $errorMsg")
 
                     _uiState.value = _uiState.value.copy(
                         isLoadingAction = false,

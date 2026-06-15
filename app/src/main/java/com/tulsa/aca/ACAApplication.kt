@@ -17,22 +17,22 @@ class ACAApplication : Application() {
 
         // Inicializar Firebase
         FirebaseApp.initializeApp(this)
-        android.util.Log.d("ACAApplication", "✅ Firebase inicializado")
+        android.util.Log.d("ACAApplication", "Firebase inicializado")
 
         // Inicializar sincronización periódica en background (cada 15 min)
         SyncWorker.schedulePeriodic(this)
-        android.util.Log.d("ACAApplication", "✅ WorkManager programado (sincronización cada 15 min)")
+        android.util.Log.d("ACAApplication", "WorkManager programado (sincronización cada 15 min)")
 
         // Inicializar sincronización automática al recuperar conexión
         connectivitySyncTrigger = ConnectivitySyncTrigger(this)
         connectivitySyncTrigger.iniciar()
-        android.util.Log.d("ACAApplication", "✅ Sincronización automática al recuperar conexión activada")
+        android.util.Log.d("ACAApplication", "Sincronización automática al recuperar conexión activada")
 
         android.util.Log.d("ACAApplication", "═══════════════════════════════════════")
-        android.util.Log.d("ACAApplication", "✅ APLICACIÓN INICIALIZADA")
-        android.util.Log.d("ACAApplication", "📴 Soporte offline completo activado")
-        android.util.Log.d("ACAApplication", "🔄 Sincronización automática configurada")
-        android.util.Log.d("ACAApplication", "🔔 Notificaciones push configuradas (FCM)")
+        android.util.Log.d("ACAApplication", "APLICACIÓN INICIALIZADA")
+        android.util.Log.d("ACAApplication", "Soporte offline completo activado")
+        android.util.Log.d("ACAApplication", "Sincronización automática configurada")
+        android.util.Log.d("ACAApplication", "Notificaciones push configuradas (FCM)")
         android.util.Log.d("ACAApplication", "═══════════════════════════════════════")
     }
 }

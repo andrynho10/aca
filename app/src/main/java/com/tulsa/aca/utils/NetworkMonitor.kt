@@ -26,6 +26,7 @@ class NetworkMonitor(private val context: Context) {
      */
     val isConnected: Flow<Boolean> = callbackFlow {
         val callback = object : ConnectivityManager.NetworkCallback() {
+            // Rastrea múltiples interfaces activas (WiFi + datos móviles simultáneos)
             private val networks = mutableSetOf<Network>()
 
             override fun onAvailable(network: Network) {
@@ -42,6 +43,7 @@ class NetworkMonitor(private val context: Context) {
                 network: Network,
                 networkCapabilities: NetworkCapabilities
             ) {
+                // VALIDATED garantiza acceso real a Internet, no solo conectividad local (ej. portal cautivo)
                 val hasInternet = networkCapabilities.hasCapability(
                     NetworkCapabilities.NET_CAPABILITY_INTERNET
                 )

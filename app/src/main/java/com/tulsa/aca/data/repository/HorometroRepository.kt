@@ -44,7 +44,7 @@ class HorometroRepository {
     ): ResultadoValidacion {
         return try {
             android.util.Log.d("HorometroRepo", """
-                🔍 Validando horómetro inicial:
+                Validando horómetro inicial:
                 - Activo: $activoId
                 - Horómetro inicial: $horometroInicial
             """.trimIndent())
@@ -75,14 +75,14 @@ class HorometroRepository {
             }
 
             if (valido) {
-                android.util.Log.d("HorometroRepo", "✅ Horómetro inicial válido")
+                android.util.Log.d("HorometroRepo", "Horómetro inicial válido")
                 ResultadoValidacion(
                     valido = true,
                     ultimoHorometro = ultimoHorometro
                 )
             } else {
                 val errorLimpio = limpiarMensajeError(error) // Limpiar error
-                android.util.Log.e("HorometroRepo", "❌ Horómetro inicial inválido: $errorLimpio")
+                android.util.Log.e("HorometroRepo", "Horómetro inicial inválido: $errorLimpio")
                 ResultadoValidacion(
                     valido = false,
                     ultimoHorometro = ultimoHorometro,
@@ -92,7 +92,7 @@ class HorometroRepository {
 
         } catch (e: Exception) {
             val errorLimpio = limpiarMensajeError(e.message) // Limpiar error
-            android.util.Log.e("HorometroRepo", "❌ Error validando: $errorLimpio", e)
+            android.util.Log.e("HorometroRepo", "Error validando: $errorLimpio", e)
             ResultadoValidacion(
                 valido = false,
                 error = errorLimpio
@@ -105,17 +105,17 @@ class HorometroRepository {
      */
     suspend fun obtenerHorometrosPendientes(usuarioId: String): List<HorometroPendiente> {
         return try {
-            android.util.Log.d("HorometroRepo", "📋 Obteniendo horómetros pendientes para usuario: $usuarioId")
+            android.util.Log.d("HorometroRepo", "Obteniendo horómetros pendientes para usuario: $usuarioId")
 
             val result = client.from("v_horometros_pendientes")
                 .select()
                 .decodeList<HorometroPendiente>()
 
-            android.util.Log.d("HorometroRepo", "✅ Encontrados ${result.size} horómetros pendientes")
+            android.util.Log.d("HorometroRepo", "Encontrados ${result.size} horómetros pendientes")
             result
 
         } catch (e: Exception) {
-            android.util.Log.e("HorometroRepo", "❌ Error obteniendo pendientes: ${e.message}", e)
+            android.util.Log.e("HorometroRepo", "Error obteniendo pendientes: ${e.message}", e)
             emptyList()
         }
     }
@@ -125,7 +125,7 @@ class HorometroRepository {
      */
     suspend fun obtenerInfoReporteParaCierre(reporteId: String): InfoReporteCierre? {
         return try {
-            android.util.Log.d("HorometroRepo", "📄 Obteniendo info del reporte: $reporteId")
+            android.util.Log.d("HorometroRepo", "Obteniendo info del reporte: $reporteId")
 
             val reporte = client.from("reportes_inspeccion")
                 .select(
@@ -164,7 +164,7 @@ class HorometroRepository {
             }
 
         } catch (e: Exception) {
-            android.util.Log.e("HorometroRepo", "❌ Error obteniendo info: ${e.message}", e)
+            android.util.Log.e("HorometroRepo", "Error obteniendo info: ${e.message}", e)
             null
         }
     }
@@ -199,7 +199,7 @@ class HorometroRepository {
     ): ResultadoCierre {
         return try {
             android.util.Log.d("HorometroRepo", """
-                🔧 Cerrando horómetro:
+                Cerrando horómetro:
                 - Reporte: $reporteId
                 - Usuario: $usuarioId
                 - Horómetro final: $horometroFinal
@@ -222,7 +222,7 @@ class HorometroRepository {
             val mensaje = resultado["mensaje"]?.jsonPrimitive?.content
 
             if (success) {
-                android.util.Log.d("HorometroRepo", "✅ Horómetro cerrado exitosamente")
+                android.util.Log.d("HorometroRepo", "Horómetro cerrado exitosamente")
                 ResultadoCierre(
                     success = true,
                     horasUso = horasUso,
@@ -230,7 +230,7 @@ class HorometroRepository {
                     mensaje = mensaje
                 )
             } else {
-                android.util.Log.e("HorometroRepo", "❌ Error: $error")
+                android.util.Log.e("HorometroRepo", "Error: $error")
                 ResultadoCierre(
                     success = false,
                     error = error
@@ -238,7 +238,7 @@ class HorometroRepository {
             }
 
         } catch (e: Exception) {
-            android.util.Log.e("HorometroRepo", "❌ Excepción: ${e.message}", e)
+            android.util.Log.e("HorometroRepo", "Excepción: ${e.message}", e)
             ResultadoCierre(
                 success = false,
                 error = "Error de conexión: ${e.message}"

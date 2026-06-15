@@ -89,8 +89,8 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
     companion object {
         private const val MAX_REPORTES_CACHE = 50
         private const val REPORTES_POR_PAGINA = 10
-        private const val CACHE_EXPIRY_MS = 60 * 1000L // ✅ 1 minuto
-        private const val CACHE_DETALLE_MS = 5 * 60 * 1000L // ✅ 5 min para volver de detalle
+        private const val CACHE_EXPIRY_MS = 60 * 1000L // 1 minuto
+        private const val CACHE_DETALLE_MS = 5 * 60 * 1000L // 5 min para volver de detalle
 
         // MÉTODOS LEGACY PARA COMPATIBILIDAD HACIA ATRÁS
         @Deprecated("Usar CacheManager.limpiarTodosLosCaches()", ReplaceWith("CacheManager.limpiarTodosLosCaches()"))
@@ -105,7 +105,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
         }
 
         fun invalidarCacheTemporal() {
-            android.util.Log.d("SupervisorVM", "⚠invalidarCacheTemporal() es deprecated - usar instancias individuales")
+            android.util.Log.d("SupervisorVM", "invalidarCacheTemporal() es deprecated - usar instancias individuales")
             // Para compatibilidad, limpiar todos los cachés
             CacheManager.limpiarTodosLosCaches()
         }
@@ -151,7 +151,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
     override fun onCleared() {
         super.onCleared()
         CacheManager.desregistrar(this)
-        android.util.Log.d("SupervisorVM", "🗑️ SupervisorViewModel destruido y desregistrado del CacheManager")
+        android.util.Log.d("SupervisorVM", "SupervisorViewModel destruido y desregistrado del CacheManager")
     }
 
     /**
@@ -177,7 +177,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
                 cacheExpirado -> "cache expirado pero válido para detalle"
                 else -> "cache válido"
             }
-            android.util.Log.d("SupervisorVM", "✅ Usando datos cacheados ($tipoCache) - ${tiempoDesdeUltimaActualizacion/1000}s antiguos")
+            android.util.Log.d("SupervisorVM", "Usando datos cacheados ($tipoCache) - ${tiempoDesdeUltimaActualizacion/1000}s antiguos")
             return
         }
 
@@ -186,7 +186,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
             cacheExpirado && !volviendoDeDetalle -> "por expiración (${tiempoDesdeUltimaActualizacion/1000}s)"
             else -> "inicial"
         }
-        android.util.Log.d("SupervisorVM", "🔄 Cargando datos frescos - Razón: $tipoRecarga")
+        android.util.Log.d("SupervisorVM", "Cargando datos frescos - Razón: $tipoRecarga")
 
         datosYaCargados.set(true)
         ultimaCargaExitosa.set(false)
@@ -266,7 +266,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
 
                 val endTime = System.currentTimeMillis()
                 val duracion = endTime - startTime
-                android.util.Log.d("SupervisorVM", "✅ Datos cargados en ${duracion}ms: ${reportesTotales.size} reportes totales, ${reportesPaginados.size} mostrados inicialmente")
+                android.util.Log.d("SupervisorVM", "Datos cargados en ${duracion}ms: ${reportesTotales.size} reportes totales, ${reportesPaginados.size} mostrados inicialmente")
 
             } catch (e: Exception) {
                 android.util.Log.e("SupervisorVM", "Error cargando datos: ${e.message}", e)
@@ -304,7 +304,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
                 return@filter false
             }
 
-            // ✅ FILTRO "Solo con problemas" SÚPER RÁPIDO
+            // FILTRO "Solo con problemas" SÚPER RÁPIDO
             if (filtros.soloConProblemas && !reporte.tieneProblemas) {
                 return@filter false
             }
@@ -403,7 +403,7 @@ class SupervisorViewModel(application: Application) : AndroidViewModel(applicati
             }
         }
 
-        android.util.Log.d("SupervisorVM", "📊 Estadísticas calculadas: Total=${reportes.size}, Hoy=$reportesHoy, Semana=$reportesEstaSemana, ConProblemas=$reportesConProblemas")
+        android.util.Log.d("SupervisorVM", "Estadísticas calculadas: Total=${reportes.size}, Hoy=$reportesHoy, Semana=$reportesEstaSemana, ConProblemas=$reportesConProblemas")
 
         return EstadisticasSupervisor(
             totalReportes = reportes.size,

@@ -5,10 +5,17 @@ import com.tulsa.aca.data.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 
+/**
+ * Maneja autenticación con Supabase Auth y resolución del perfil de usuario en la tabla `usuarios`
+ */
 class AuthRepository {
     private val client = SupabaseClient.client
     private val usuarioRepository = UsuarioRepository()
 
+    /**
+     * Autentica al usuario con Supabase Auth y enriquece el objeto con datos de la tabla `usuarios`
+     * (rol, nombre completo, etc.) usando el UUID de Auth como clave de join
+     */
     suspend fun login(email: String, password: String): Result<Usuario> {
         return try {
             // 1. Autenticar con Supabase Auth
@@ -47,6 +54,7 @@ class AuthRepository {
         }
     }
 
+    /** Cierra la sesión activa en Supabase Auth */
     suspend fun logout(): Result<Unit> {
         return try {
             client.auth.signOut()

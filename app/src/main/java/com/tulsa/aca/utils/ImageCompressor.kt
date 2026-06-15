@@ -107,13 +107,13 @@ object ImageCompressor {
                     inJustDecodeBounds = true
                 }
 
-                // Primer pase: obtener dimensiones sin cargar el bitmap
+                // Primer pase: solo lee metadatos de tamaño sin decodificar píxeles (sin uso de heap)
                 BitmapFactory.decodeStream(inputStream, null, options)
 
                 // CALCULAR SAMPLE SIZE PARA EVITAR OutOfMemoryError
                 val sampleSize = calculateSampleSize(options, DEFAULT_MAX_WIDTH, DEFAULT_MAX_HEIGHT)
 
-                // Segundo pase: cargar bitmap con sample size óptimo
+                // Segundo pase: carga el bitmap submuestreado según el sampleSize calculado
                 context.contentResolver.openInputStream(imageUri)?.use { secondInputStream ->
                     val loadOptions = BitmapFactory.Options().apply {
                         inSampleSize = sampleSize

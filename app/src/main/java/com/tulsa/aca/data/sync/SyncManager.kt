@@ -43,6 +43,7 @@ class SyncManager(private val context: Context) {
     val syncStatus: Flow<SyncStatus> = _syncStatus.asStateFlow()
 
     companion object {
+        // El cache se considera válido por 5 minutos; pasado ese tiempo se fuerza re-sync
         private const val SYNC_MAX_AGE_MS = 5 * 60 * 1000L // 5 minutos
         private const val MAX_RETRY_ATTEMPTS = 3
 
@@ -87,11 +88,11 @@ class SyncManager(private val context: Context) {
                 )
             )
 
-            android.util.Log.d("SyncManager", "✅ Activos sincronizados: ${entities.size}")
+            android.util.Log.d("SyncManager", "Activos sincronizados: ${entities.size}")
             Result.success(Unit)
 
         } catch (e: Exception) {
-            android.util.Log.e("SyncManager", "❌ Error sincronizando activos: ${e.message}", e)
+            android.util.Log.e("SyncManager", "Error sincronizando activos: ${e.message}", e)
             syncStatusDao.updateSyncTimestamp(
                 entidad = ENTITY_ACTIVOS,
                 timestamp = System.currentTimeMillis(),
@@ -170,11 +171,11 @@ class SyncManager(private val context: Context) {
                 )
             )
 
-            android.util.Log.d("SyncManager", "✅ Plantillas sincronizadas: ${plantillas.size}")
+            android.util.Log.d("SyncManager", "Plantillas sincronizadas: ${plantillas.size}")
             Result.success(Unit)
 
         } catch (e: Exception) {
-            android.util.Log.e("SyncManager", "❌ Error sincronizando plantillas: ${e.message}", e)
+            android.util.Log.e("SyncManager", "Error sincronizando plantillas: ${e.message}", e)
             syncStatusDao.updateSyncTimestamp(
                 entidad = ENTITY_PLANTILLAS,
                 timestamp = System.currentTimeMillis(),
@@ -201,7 +202,7 @@ class SyncManager(private val context: Context) {
         try {
             val reportesPendientes = reportePendienteDao.getAllReportesPendientes()
 
-            android.util.Log.d("SyncManager", "📤 Reportes pendientes a sincronizar: ${reportesPendientes.size}")
+            android.util.Log.d("SyncManager", "Reportes pendientes a sincronizar: ${reportesPendientes.size}")
 
             reportesPendientes.forEach { reportePendiente ->
                 try {
@@ -212,7 +213,7 @@ class SyncManager(private val context: Context) {
                         result.reportesSincronizados++
                         // Eliminar reporte de la cola
                         reportePendienteDao.deleteReportePendienteById(reportePendiente.id)
-                        android.util.Log.d("SyncManager", "✅ Reporte ${reportePendiente.id} sincronizado")
+                        android.util.Log.d("SyncManager", "Reporte ${reportePendiente.id} sincronizado")
                     } else {
                         result.reportesFallidos++
                         // Registrar intento fallido
@@ -225,7 +226,7 @@ class SyncManager(private val context: Context) {
 
                 } catch (e: Exception) {
                     result.reportesFallidos++
-                    android.util.Log.e("SyncManager", "❌ Error sincronizando reporte ${reportePendiente.id}: ${e.message}", e)
+                    android.util.Log.e("SyncManager", "Error sincronizando reporte ${reportePendiente.id}: ${e.message}", e)
                     reportePendienteDao.registrarIntentoFallido(
                         reporteId = reportePendiente.id,
                         timestamp = System.currentTimeMillis(),
@@ -238,7 +239,7 @@ class SyncManager(private val context: Context) {
             return Result.success(result)
 
         } catch (e: Exception) {
-            android.util.Log.e("SyncManager", "❌ Error en sincronización general: ${e.message}", e)
+            android.util.Log.e("SyncManager", "Error en sincronización general: ${e.message}", e)
             _syncStatus.value = SyncStatus.Error(e.message ?: "Error desconocido")
             return Result.failure(e)
 
@@ -259,7 +260,7 @@ class SyncManager(private val context: Context) {
             // 2. Obtener fotos pendientes
             val fotosPendientes = reportePendienteDao.getFotosPendientesByReporte(reportePendiente.id)
 
-            // 3. Subir fotos primero
+            // 3. Reagrupar fotos por índice de respuesta para reconstruir el mapa original
             val fotosMap = mutableMapOf<Int, List<Uri>>() // respuestaIndex -> List<Uri>
             fotosPendientes.forEach { foto ->
                 val uris = fotosMap.getOrDefault(foto.respuestaIndex, emptyList()).toMutableList()

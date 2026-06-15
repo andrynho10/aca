@@ -30,11 +30,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         private const val NOTIFICATION_ID_BASE = 2000
     }
 
+    /**
+     * Se invoca cuando FCM genera o rota el token del dispositivo;
+     * persiste el token en Supabase para que el backend pueda enviar notificaciones dirigidas
+     */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "Nuevo token FCM generado: $token")
 
-        // Guardar el token en Supabase si el usuario está autenticado
+        // Guarda el token en Supabase si el usuario está autenticado; si no, se guardará en el próximo login
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val authRepository = AuthRepository()
@@ -58,17 +62,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
+    /**
+     * Enruta los mensajes FCM según el campo `tipo` del payload de datos;
+     * los mensajes de reporte con problemas abren la pantalla del reporte al tocar la notificación
+     */
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
         Log.d(TAG, "Mensaje recibido de FCM: ${message.messageId}")
 
-        // Verificar que sea un mensaje de reporte con problemas
         val tipo = message.data["tipo"]
         if (tipo == "reporte_problemas") {
             mostrarNotificacionReporte(message)
         } else {
-            // Mostrar notificación genérica si no tiene tipo específico
+            // Fallback: muestra el notification payload genérico si no hay tipo de dato reconocido
             message.notification?.let {
                 mostrarNotificacionGenerica(it.title, it.body)
             }
@@ -99,6 +106,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             putExtra("activo_id", activoId)
         }
 
+        // Usa el hash del reporteId como requestCode para que cada reporte tenga su propio PendingIntent
         val pendingIntent = PendingIntent.getActivity(
             this,
             reporteId?.hashCode() ?: NOTIFICATION_ID_BASE,

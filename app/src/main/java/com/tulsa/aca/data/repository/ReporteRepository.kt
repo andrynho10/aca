@@ -25,10 +25,16 @@ data class ReporteCompleto(
     val respuestas: List<RespuestaReporte>,
     val fotos: Map<Int, List<String>> // Map de respuestaId -> List de URLs de fotos
 )
+
+/**
+ * Repositorio remoto que escribe directamente en Supabase (reportes, respuestas y fotos)
+ * Para uso offline-first, utilizar OfflineReporteRepository como capa intermedia
+ */
 class ReporteRepository {
     private val client = SupabaseClient.client
     private val storageRepository = StorageRepository()
 
+    /** Crea un reporte básico sin fotos ni timestamps (versión simplificada, usada solo en tests o flujos legacy) */
     suspend fun crearReporte(
         activoId: Int,
         usuarioId: String,
@@ -126,7 +132,7 @@ class ReporteRepository {
             false
         }
     }
-    // Obtener historia por Activo
+    /** Obtiene todos los reportes de un activo ordenados por fecha descendente */
     suspend fun obtenerHistorialPorActivo(activoId: Int): List<ReporteInspeccion> {
         return try {
             client.from("reportes_inspeccion").select {
@@ -175,7 +181,7 @@ class ReporteRepository {
         }
     }
 
-    // Obtener usuario por ID
+    /** Busca un usuario en la tabla pública `usuarios` por su UUID de Supabase Auth */
     suspend fun obtenerUsuarioPorId(usuarioId: String): Usuario? {
         return try {
             client.from("usuarios").select {
@@ -187,7 +193,7 @@ class ReporteRepository {
             null
         }
     }
-    // Obtener detalles completos del reporte (para supervisores)
+    /** Carga reporte, usuario y todas sus fotos en paralelo; uso principal: pantalla de detalle del supervisor */
     suspend fun obtenerReporteCompleto(reporteId: String): ReporteCompleto? = coroutineScope {
         try {
             // 1. Obtener el reporte principal
@@ -244,13 +250,13 @@ class ReporteRepository {
     /* suspend fun verificarReportesConProblemas(reporteIds: List<String>): Map<String, Boolean> {
         if (reporteIds.isEmpty()) return emptyMap()
 
-        android.util.Log.d("ReporteRepository", "🔍 VERIFICANDO PROBLEMAS para ${reporteIds.size} reportes:")
+        android.util.Log.d("ReporteRepository", "VERIFICANDO PROBLEMAS para ${reporteIds.size} reportes:")
         reporteIds.forEach { id ->
             android.util.Log.d("ReporteRepository", "   - Reporte ID: $id")
         }
 
         return try {
-            // ✅ MÉTODO CORREGIDO: Usar múltiples consultas O método alternativo
+            // MÉTODO CORREGIDO: Usar múltiples consultas O método alternativo
             val respuestasFiltradas = mutableListOf<RespuestaReporte>()
 
             // Opción 1: Consultas individuales (más confiable)
@@ -263,7 +269,7 @@ class ReporteRepository {
                 respuestasFiltradas.addAll(respuestasDelReporte)
             }
 
-            android.util.Log.d("ReporteRepository", "📋 RESPUESTAS ENCONTRADAS: ${respuestasFiltradas.size}")
+            android.util.Log.d("ReporteRepository", "RESPUESTAS ENCONTRADAS: ${respuestasFiltradas.size}")
             respuestasFiltradas.forEach { respuesta ->
                 android.util.Log.d("ReporteRepository", "   - Reporte: ${respuesta.reporteId}, Pregunta: ${respuesta.preguntaId}, Respuesta: ${respuesta.respuesta}")
             }
@@ -278,23 +284,23 @@ class ReporteRepository {
 
                 reportesConProblemas[reporteId] = tieneProblemas
 
-                val estadoProblemas = if (tieneProblemas) "⚠️ CON PROBLEMAS" else "✅ SIN PROBLEMAS"
-                android.util.Log.d("ReporteRepository", "📊 Reporte $reporteId: $estadoProblemas (${respuestasDelReporte.size} respuestas)")
+                val estadoProblemas = if (tieneProblemas) "CON PROBLEMAS" else "SIN PROBLEMAS"
+                android.util.Log.d("ReporteRepository", "Reporte $reporteId: $estadoProblemas (${respuestasDelReporte.size} respuestas)")
 
                 if (tieneProblemas) {
                     val respuestasMalas = respuestasDelReporte.filter { !it.respuesta }
-                    android.util.Log.d("ReporteRepository", "   ❌ Respuestas MALO: ${respuestasMalas.size}")
+                    android.util.Log.d("ReporteRepository", "   Respuestas MALO: ${respuestasMalas.size}")
                     respuestasMalas.forEach { mala ->
                         android.util.Log.d("ReporteRepository", "      - Pregunta ${mala.preguntaId}: ${mala.comentario}")
                     }
                 }
             }
 
-            android.util.Log.d("ReporteRepository", "🏁 RESULTADO: ${reportesConProblemas.count { it.value }} de ${reporteIds.size} reportes tienen problemas")
+            android.util.Log.d("ReporteRepository", "RESULTADO: ${reportesConProblemas.count { it.value }} de ${reporteIds.size} reportes tienen problemas")
             reportesConProblemas
 
         } catch (e: Exception) {
-            android.util.Log.e("ReporteRepository", "❌ ERROR verificando reportes: ${e.message}", e)
+            android.util.Log.e("ReporteRepository", "ERROR verificando reportes: ${e.message}", e)
             emptyMap()
         }
     }
@@ -394,6 +400,7 @@ class ReporteRepository {
                 duracionMinutos = duracionMinutos,
                 horometroInicial = horometroInicial,
                 turno = null,
+                // Si se registró horómetro inicial, el reporte queda pendiente de cierre de horómetro final
                 horometroPendiente = horometroInicial != null
             )
 
@@ -403,11 +410,13 @@ class ReporteRepository {
                 it.respuesta.copy(reporteId = reporteId)
             }
 
+            // Inserta respuestas y recupera los IDs generados por Supabase para asociar las fotos
             val respuestasInsertadas = client.from("respuestas_reporte")
                 .insert(respuestasParaInsertar) {
                     select()
                 }.decodeList<RespuestaReporte>()
 
+            // Para cada respuesta con fotos: comprime, sube a Storage y registra la URL
             respuestasConFotos.forEachIndexed { index, respuestaConFotos ->
                 val respuestaInsertada = respuestasInsertadas[index]
                 val fotos = respuestaConFotos.fotos

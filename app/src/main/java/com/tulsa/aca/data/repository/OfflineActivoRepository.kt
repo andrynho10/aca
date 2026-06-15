@@ -57,7 +57,7 @@ class OfflineActivoRepository(private val context: Context) {
     }
 
     /**
-     * Flow reactivo de todos los activos desde el cache local
+     * Flow reactivo de activos del cache local; ideal para observar en la UI sin depender de red
      */
     fun observarActivos(): Flow<List<Activo>> {
         return activoDao.getAllActivosFlow().map { entities ->
@@ -200,13 +200,13 @@ class OfflineActivoRepository(private val context: Context) {
     }
 
     /**
-     * Verifica si un código QR es único
+     * Verifica si un código QR es único; usa el servidor online o el cache local como fallback offline
      */
     suspend fun verificarCodigoQRUnico(codigoQr: String, excludeId: Int? = null): Boolean {
         return if (networkMonitor.isCurrentlyConnected()) {
             remoteRepository.verificarCodigoQRUnico(codigoQr, excludeId)
         } else {
-            // Si no hay conexión, verificar en cache local
+            // Sin conexión: la verificación offline puede dar falsos negativos si el cache está desactualizado
             val activo = activoDao.getActivoByQR(codigoQr)
             activo == null || activo.id == excludeId
         }
@@ -286,11 +286,11 @@ class OfflineActivoRepository(private val context: Context) {
             }
 
             activoDao.insertActivos(entities)
-            android.util.Log.d("OfflineActivoRepository", "✅ Sincronización exitosa: ${entities.size} activos")
+            android.util.Log.d("OfflineActivoRepository", "Sincronización exitosa: ${entities.size} activos")
             true
 
         } catch (e: Exception) {
-            android.util.Log.e("OfflineActivoRepository", "❌ Error en sincronización: ${e.message}", e)
+            android.util.Log.e("OfflineActivoRepository", "Error en sincronización: ${e.message}", e)
             false
         }
     }

@@ -84,12 +84,12 @@ class ActivoViewModel(application: Application) : AndroidViewModel(application) 
                 val success = repository.sincronizarConServidor()
                 if (success) {
                     cargarActivos() // Recargar lista actualizada
-                    android.util.Log.d("ActivoViewModel", "✅ Sincronización exitosa")
+                    android.util.Log.d("ActivoViewModel", "Sincronización exitosa")
                 } else {
-                    android.util.Log.w("ActivoViewModel", "⚠️ No se pudo sincronizar (sin conexión)")
+                    android.util.Log.w("ActivoViewModel", "No se pudo sincronizar (sin conexión)")
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ActivoViewModel", "❌ Error sincronizando: ${e.message}", e)
+                android.util.Log.e("ActivoViewModel", "Error sincronizando: ${e.message}", e)
             } finally {
                 _isLoading.value = false
             }

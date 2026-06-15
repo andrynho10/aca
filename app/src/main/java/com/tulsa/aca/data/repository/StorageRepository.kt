@@ -10,6 +10,10 @@ import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.util.UUID
 
+/**
+ * Sube fotos comprimidas a Supabase Storage bajo el bucket `fotos-reportes`
+ * con la ruta: reportes/{reporteId}/{preguntaId}/{uuid}.jpg
+ */
 class StorageRepository {
     private val client = SupabaseClient.client
     private val storage = client.storage
